@@ -22,6 +22,7 @@ import java.util.zip.GZIPOutputStream;
 
 public class LogSinkExporter {
     private static final Logger logger = LoggerFactory.getLogger(LogSinkExporter.class);
+    private static final String CARDINAL_API_KEY_HEADER = "x-cardinalhq-api-key";
 
     private final LogSinkConfig config;
     private final HttpClient httpClient;
@@ -80,11 +81,9 @@ public class LogSinkExporter {
     }
 
     private void sendHttp(byte[] payload) {
-
-
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(config.getOTLPEndpoint()))
-                .header("x-cardinalhq-api-key", config.getApiKey())
+                .header(CARDINAL_API_KEY_HEADER, config.getApiKey())
                 .header("Content-Type", "application/x-protobuf")
                 .header("Content-Encoding", "gzip")
                 .POST(HttpRequest.BodyPublishers.ofByteArray(gzip(payload)))
@@ -93,9 +92,9 @@ public class LogSinkExporter {
         this.httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
                     if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                        System.out.println("Logs sent successfully");
+                        logger.debug("Logs sent successfully");
                     } else {
-                        System.err.println("Failed to send logs: " + response.statusCode());
+                        logger.error("Failed to send logs: {}", response.statusCode());
                     }
                 })
                 .exceptionally(ex -> {

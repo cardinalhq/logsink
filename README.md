@@ -60,7 +60,7 @@ logSink.shutdown();
 
 ## 📦 Importing logsink
 
-We publish logsink via [JitPack](https://jitpack.io/#cardinalhq/logsink). To use it:
+We publish `logsink` via [JitPack](https://jitpack.io/#cardinalhq/logsink). To use it:
 
 Add JitPack to your `settings.gradle.kts`:
 
