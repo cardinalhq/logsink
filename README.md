@@ -53,10 +53,10 @@ LogSink logSink = new LogSink(config);
 
 // Log with convenience method
 logSink.log(System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
-     "User login successful",                // message
-Level.INFO,                              // java.util.logging.Level
-        "user.id", "12345",                      // custom log-level attributes (tags)
-        "auth.method", "password");
+            "User login successful",                // message
+            Level.INFO,                              // java.util.logging.Level
+            "user.id", "12345",                      // custom log-level attributes (tags) optional
+            "auth.method", "password");
 
 
 // Manually flush and shutdown if needed
