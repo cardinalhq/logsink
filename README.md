@@ -16,6 +16,27 @@ Logsink is suitable for use cases where you:
 
 ---
 
+## 📦 Importing logsink into your Java Project
+
+We publish this library to [jitpack.io](https://jitpack.io/#cardinalhq/logsink)
+
+```aiignore
+	dependencyResolutionManagement {
+		repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+		repositories {
+			mavenCentral()
+			maven { url 'https://jitpack.io' }
+		}
+	}
+```
+
+```aiignore
+dependencies {
+	        implementation 'com.github.cardinalhq:logsink:1.0.4'
+	}
+```
+
+
 ## 📦 OTEL Data Model 
 
 ```aiignore
