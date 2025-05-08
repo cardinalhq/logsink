@@ -5,7 +5,7 @@ It provides efficient batching, compression, and delivery of structured logs to 
 
 ---
 
-## 📖 What Does logsink Do?
+## 📖 What Does `logsink` Do?
 
 `logsink` helps you:
 
@@ -16,6 +16,49 @@ It provides efficient batching, compression, and delivery of structured logs to 
 - Integrate easily with any OTLP-compatible observability pipeline
 
 ---
+
+## Main API
+
+The `LogSink` class provides a convenient method for logging structured data:
+
+```java
+public void log(long timestamp, String message, Level level, String... tags)
+```
+- timestamp is in nanoseconds
+- message is the log body
+- tags are key-value pairs (must be even number) used as log-level attributes
+
+🪵 LogSink
+
+The main entrypoint for using logsink in your application.
+- Initializes a LogSinkBatcher internally
+- Accepts both raw OpenTelemetry LogRecords and convenience method inputs
+- Adds custom resource-level metadata like service.name, env, etc.
+- Validates that resource tags are passed in key-value format (e.g., "env", "prod")
+- Provides built-in batching, flushing, and shutdown support
+- Supports custom HTTP headers for API key and other metadata
+
+```java
+// Create a LogSink with resource-level tags (must be key-value pairs)
+LogSinkConfig config = new LogSinkConfig("<CARDINAL_RECEIVER_URL>", "<API_KEY>", <MAX_BATCH_SIZE>);
+LogSink logSink = new LogSink(config, "my-service", "env", "prod", "region", "us-west");
+
+// Log with convenience method
+logSink.log(
+        System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
+        "User login successful",                // message
+Level.INFO,                              // java.util.logging.Level
+        "user.id", "12345",                      // log-level attributes (tags)
+        "auth.method", "password"
+        );
+
+// Log using a raw OpenTelemetry LogRecord
+        logSink.log(record);
+
+// Manually flush and shutdown if needed
+logSink.flush();
+logSink.shutdown(); 
+```
 
 ## 📦 Importing logsink
 
@@ -92,63 +135,4 @@ public void flush()
 public void shutdown()
 ```
 
-🪵 LogSink
 
-The main entrypoint for using logsink in your application.
-- Initializes a LogSinkBatcher internally
-- Accepts both raw OpenTelemetry LogRecords and convenience method inputs
-- Adds custom resource-level metadata like service.name, env, etc.
-- Validates that resource tags are passed in key-value format (e.g., "env", "prod")
-- Provides built-in batching, flushing, and shutdown support
-- Supports custom HTTP headers for API key and other metadata
-
-```java
-// Create a LogSink with resource-level tags (must be key-value pairs)
-LogSink logSink = new LogSink(config, "my-service", "env", "prod", "region", "us-west");
-
-// Log with convenience method
-logSink.log(
-        System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
-        "User login successful",                // message
-Level.INFO,                              // java.util.logging.Level
-        "user.id", "12345",                      // log-level attributes (tags)
-        "auth.method", "password"
-        );
-
-// Log using a raw OpenTelemetry LogRecord
-        logSink.log(record);
-
-// Manually flush and shutdown if needed
-logSink.flush();
-logSink.shutdown(); 
-```
-
-✨ Convenience Logging Method
-
-The `LogSink` class provides a convenient method for logging structured data:
-
-```java
-public void log(long timestamp, String message, Level level, String... tags)
-```
-- timestamp is in nanoseconds
-- message is the log body
-- tags are key-value pairs (must be even number) used as log-level attributes
-
-🛠️ Creating a LogRecord Manually
-```java
-import io.opentelemetry.proto.logs.v1.LogRecord;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.logs.v1.SeverityNumber;
-
-LogRecord record = LogRecord.newBuilder()
-    .setTimeUnixNano(System.currentTimeMillis() * 1_000_000)
-    .setSeverityNumberValue(SeverityNumber.SEVERITY_NUMBER_INFO.getNumber())
-    .setSeverityText("INFO")
-    .setBody(AnyValue.newBuilder().setStringValue("User login successful").build())
-    .addAttributes(KeyValue.newBuilder()
-        .setKey("user.id")
-        .setValue(AnyValue.newBuilder().setStringValue("12345").build())
-        .build())
-    .build();
-```
