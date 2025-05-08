@@ -4,7 +4,17 @@ plugins {
 }
 
 group = "com.cardinal"
-version = "1.0.10"
+version = "1.0.11"
+
+
+publishing {
+    publications {
+        create<MavenPublication>("gpr") {
+            from(components["java"])
+            artifactId = "logsink"
+        }
+    }
+}
 
 
 repositories {
