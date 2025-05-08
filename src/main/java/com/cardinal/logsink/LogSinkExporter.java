@@ -52,6 +52,8 @@ public class LogSinkExporter {
                 .addResourceLogs(resourceLogs)
                 .build();
 
+        System.out.println("Built request: " + request);
+
         byte[] payload = request.toByteArray();
         sendHttp(payload);
     }
