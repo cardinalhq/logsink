@@ -1,10 +1,18 @@
+plugins {
+    id("java")
+    id("maven-publish")
+}
+
+group = "com.cardinal"
+version = "1.0.0"
+
 publishing {
     publications {
         create<MavenPublication>("gpr") {
             from(components["java"])
             groupId = "com.cardinal"
             artifactId = "logsink"
-            version = "1.0.0" // or use versioning from git tag
+            version = "1.0.0"
         }
     }
 
@@ -18,10 +26,6 @@ publishing {
             }
         }
     }
-}
-
-plugins {
-    id("java")
 }
 
 group = "org.example"
