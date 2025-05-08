@@ -15,6 +15,15 @@ Logsink is suitable for use cases where you:
 
 ---
 
+## 📦 OTEL Data Model 
+
+```aiignore
+ExportLogsServiceRequest
+└── ResourceLogs         ← One per unique resource (e.g. a service or host)
+    └── ScopeLogs        ← One per instrumentation library or logical log scope
+        └── LogRecord    ← Individual log entry (timestamp, message, severity, etc.)
+```
+
 ## 📦 Class Overview
 
 ### 🔧 `LogSinkConfig`
@@ -30,7 +39,7 @@ public class LogSinkConfig {
 }
 ```
 
-📤 LogSinkExporter
+### 🔧 `LogSinkExporter`
 
 Responsible for sending logs over the wire.
 
@@ -44,7 +53,7 @@ Responsible for sending logs over the wire.
 public void sendBatch(String appName, List<LogRecord> records, String... resourceTags)
 ```
 
-📥 LogsinkBatcher
+### 🔧 `LogsinkBatcher`
 
 Buffers log records and triggers sendBatch() based on configured thresholds.
 
@@ -73,7 +82,13 @@ logSink.flush();
 logSink.shutdown();
 ```
 
-### Instantiating a LogRecord
+### Using the convenience log method on the `LogSink` class which would convert the string message to a `LogRecord` for you.
+
+```java
+public void log(long timestamp, String message, Level level, String... tags) // tags here are structured attributes you attach at the logRecord level. 
+```
+
+### Instantiating the raw LogRecord
 
 ```java
 import io.opentelemetry.proto.logs.v1.LogRecord;
