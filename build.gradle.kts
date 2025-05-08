@@ -6,27 +6,6 @@ plugins {
 group = "com.cardinal"
 version = "1.0.0"
 
-publishing {
-    publications {
-        create<MavenPublication>("gpr") {
-            from(components["java"])
-            groupId = "com.cardinal"
-            artifactId = "logsink"
-            version = "1.0.0"
-        }
-    }
-
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/cardinalhq/logsink")
-            credentials {
-                username = System.getenv("USERNAME")
-                password = System.getenv("TOKEN")
-            }
-        }
-    }
-}
 
 group = "org.example"
 version = "1.0-SNAPSHOT"
