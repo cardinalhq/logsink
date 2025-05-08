@@ -38,6 +38,7 @@ public class LogSinkExporter {
     }
 
     public void sendBatch(List<LogRecord> records) {
+        System.out.println("Sending " + records.size() + " records to LogSink");
         ScopeLogs scopeLogs = ScopeLogs.newBuilder()
                 .addAllLogRecords(records)
                 .build();
@@ -66,6 +67,7 @@ public class LogSinkExporter {
 
         this.httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
+                    System.out.println("Received response from LogSink: " + response.statusCode());
                     if (response.statusCode() >= 200 && response.statusCode() < 300) {
                         logger.debug("Logs sent successfully");
                     } else {
