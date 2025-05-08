@@ -30,6 +30,8 @@ public class LogSinkExporterTest {
                 .setApiKey("fake-api-key")
                 .setOtlpEndpoint("http://localhost:4318/v1/logs")
                 .setMaxBatchSize(100)
+                .setAppName("test-app")
+                .addResourceAttribute("env", "test")
                 .build();
         LogSinkExporter exporter = new LogSinkExporter(config, mockHttpClient);
 

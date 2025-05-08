@@ -30,6 +30,8 @@ public class LogSinkTest {
                 .setApiKey("fake-api-key")
                 .setOtlpEndpoint("http://localhost:4318/v1/logs")
                 .setMaxBatchSize(2)
+                .setAppName("test-app")
+                .addResourceAttribute("env", "test")
                 .build();
 
         TestExporter exporter = new TestExporter(config);
@@ -58,6 +60,8 @@ public class LogSinkTest {
                 .setApiKey("fake-api-key")
                 .setOtlpEndpoint("http://localhost:4318/v1/logs")
                 .setMaxBatchSize(100)
+                .setAppName("test-app")
+                .addResourceAttribute("env", "test")
                 .build();
 
         TestExporter exporter = new TestExporter(config);

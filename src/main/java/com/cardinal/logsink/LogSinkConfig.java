@@ -82,7 +82,7 @@ public class LogSinkConfig {
                 throw new IllegalArgumentException("OTLP endpoint must be provided.");
             }
             if (appName == null || appName.isEmpty()) {
-                throw new IllegalArgumentException("Service name must be provided.");
+                throw new IllegalArgumentException("App name must be provided.");
             }
             List<KeyValue> attributes = new ArrayList<>();
             for (Map.Entry<String, String> entry : resourceAttributes.entrySet()) {
