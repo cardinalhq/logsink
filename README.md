@@ -70,22 +70,22 @@ public class LogSinkConfig {
 🔧 LogSinkExporter
 
 Handles log delivery:
-•	Builds an OTLP ExportLogsServiceRequest
-•	Adds resource-level metadata (like `service.name`, `env`)
-•	Compresses using GZIP
-•	Sends via HttpClient
+- Builds an OTLP ExportLogsServiceRequest
+- Adds resource-level metadata (like `service.name`, `env`)
+- Compresses using GZIP
+- Sends via HttpClient
 
 ```java
 public void sendBatch(String appName, List<LogRecord> records, String... resourceTags)
 ```
 
-🔧 LogsinkBatcher
+🔧 LogSinkBatcher
 
 Buffers and batches logs for export:
-•	Uses a `LinkedBlockingQueue<LogRecord>` internally
-•	Flushes on batch size or payload size threshold
-•	Periodically flushes every 5 seconds
-•	Runs flush in a background thread
+- Uses a `LinkedBlockingQueue<LogRecord>` internally
+- Flushes on batch size or payload size threshold
+- Periodically flushes every 5 seconds
+- Runs flush in a background thread
 
 ```java
 public void add(LogRecord record)
@@ -96,12 +96,12 @@ public void shutdown()
 🪵 LogSink
 
 The main entrypoint for using logsink in your application.
-•	Initializes a LogSinkBatcher internally
-•	Accepts both raw OpenTelemetry LogRecords and convenience method inputs
-•	Adds custom resource-level metadata like service.name, env, etc.
-•	Validates that resource tags are passed in key-value format (e.g., "env", "prod")
-•	Provides built-in batching, flushing, and shutdown support
-•	Supports custom HTTP headers for API key and other metadata
+- Initializes a LogSinkBatcher internally
+- Accepts both raw OpenTelemetry LogRecords and convenience method inputs
+- Adds custom resource-level metadata like service.name, env, etc.
+- Validates that resource tags are passed in key-value format (e.g., "env", "prod")
+- Provides built-in batching, flushing, and shutdown support
+- Supports custom HTTP headers for API key and other metadata
 
 ```java
 // Create a LogSink with resource-level tags (must be key-value pairs)
@@ -130,9 +130,9 @@ The `LogSink` class provides a convenient method for logging structured data:
 ```java
 public void log(long timestamp, String message, Level level, String... tags)
 ```
-	•	timestamp is in nanoseconds
-	•	message is the log body
-	•	tags are key-value pairs (must be even number) used as log-level attributes
+- timestamp is in nanoseconds
+- message is the log body
+- tags are key-value pairs (must be even number) used as log-level attributes
 
 🛠️ Creating a LogRecord Manually
 ```java
