@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="5b012fb6-1999-4cc9-8b1c-36d0ed2296e1" name="Changes" comment="Adding README.md">
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/cardinal/logsink/LogSink.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/cardinal/logsink/LogSink.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +45,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
@@ -203,6 +202,7 @@
       <workItem from="1746665007909" duration="2731000" />
       <workItem from="1746667751370" duration="102000" />
       <workItem from="1746667856208" duration="848000" />
+      <workItem from="1746669064642" duration="980000" />
     </task>
     <task id="LOCAL-00001" summary="Adding logsink">
       <option name="closed" value="true" />
@@ -220,7 +220,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746668456932</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Adding README.md">
+      <option name="closed" value="true" />
+      <created>1746669113283</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1746669113283</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

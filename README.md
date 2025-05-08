@@ -78,7 +78,7 @@ The public-facing class you use to log data.
 
 ```java
 LogSink logSink = new LogSink(config, "my-service", "env", "prod");
-logSink.log(logRecord);
+logSink.log(timestamp, message, level, tags); // or logSink.log(record);
 logSink.flush();
 logSink.shutdown();
 ```
