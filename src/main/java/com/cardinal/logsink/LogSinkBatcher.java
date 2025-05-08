@@ -9,19 +9,14 @@ import java.util.concurrent.*;
 public class LogSinkBatcher {
     private final BlockingQueue<LogRecord> queue;
     private final LogSinkExporter exporter;
-    private final String appName;
-    private final String[] resourceTags;
     private final int maxBatchSize;
     private final ScheduledExecutorService scheduler;
     private final ExecutorService worker;
 
-    public LogSinkBatcher(LogSinkConfig config, LogSinkExporter exporter, String appName, String... resourceTags) {
+    public LogSinkBatcher(LogSinkConfig config, LogSinkExporter exporter) {
         this.queue = new LinkedBlockingQueue<>();
         this.exporter = exporter;
-        this.appName = appName;
-        this.resourceTags = resourceTags;
         this.maxBatchSize = config.getMaxBatchSize();
-
 
         this.scheduler = Executors.newScheduledThreadPool(1);
         this.worker = Executors.newSingleThreadExecutor();
@@ -41,7 +36,7 @@ public class LogSinkBatcher {
         List<LogRecord> batch = new ArrayList<>();
         queue.drainTo(batch);
         if (!batch.isEmpty()) {
-            exporter.sendBatch(appName, batch, resourceTags);
+            exporter.sendBatch(batch);
         }
     }
 
@@ -54,7 +49,7 @@ public class LogSinkBatcher {
                 queue.drainTo(batch, maxBatchSize - 1); // already took one
 
                 if (!batch.isEmpty()) {
-                    exporter.sendBatch(appName, batch, resourceTags);
+                    exporter.sendBatch(batch);
                 }
             }
         } catch (InterruptedException e) {

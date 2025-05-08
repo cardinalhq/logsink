@@ -40,7 +40,7 @@ public class LogSinkExporterTest {
 
         // Verify no exception thrown on mock request
         assertDoesNotThrow(() ->
-                exporter.sendBatch("test-app", List.of(record), "env", "test")
+                exporter.sendBatch(List.of(record))
         );
 
         // Verify that the request was sent once on the mock client

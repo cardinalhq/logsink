@@ -17,20 +17,9 @@ public class LogSink {
 
     private final LogSinkBatcher batcher;
 
-    public LogSink(LogSinkConfig config, String appName, String... resourceTags) {
-        if (resourceTags.length % 2 != 0) {
-            logger.warn("Resource tags must be provided as key-value pairs. Ignoring the last unmatched tag.");
-        }
-
-        // Trim resourceTags if the last one is unmatched
-        String[] safeTags = resourceTags.length % 2 == 0
-                ? resourceTags
-                : java.util.Arrays.copyOf(resourceTags, resourceTags.length - 1);
-
+    public LogSink(LogSinkConfig config) {
         LogSinkExporter exporter = new LogSinkExporter(config);
-        this.batcher = new LogSinkBatcher(config, exporter, appName, safeTags);
-
-        logger.info("LogSink initialized with appName: {}, resourceTags: {}", appName, String.join(", ", safeTags));
+        this.batcher = new LogSinkBatcher(config, exporter);
     }
 
     public boolean log(LogRecord record) {

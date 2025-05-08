@@ -30,7 +30,7 @@ public void log(long timestamp, String message, Level level, String... tags)
 
 🪵 LogSink
 
-The main entrypoint for using logsink in your application.
+The main entrypoint for using `logsink` in your application.
 - Initializes a LogSinkBatcher internally
 - Accepts both raw OpenTelemetry LogRecords and convenience method inputs
 - Adds custom resource-level metadata like service.name, env, etc.
@@ -41,12 +41,15 @@ The main entrypoint for using logsink in your application.
 ```java
 // Create a LogSink with resource-level tags (must be key-value pairs)
 LogSinkConfig config = LogSinkConfig.builder()
-        .otlpEndpoint("http://localhost:4318/v1/logs") // Cardinal receiver endpoint
+        .otlpEndpoint("http://localhost:4318/v1/logs") // OTLP receiver endpoint
         .apiKey("your-api-key")                       // Optional API key
         .maxBatchSize(100)                            // Max logs per batch
+        .setAppName("my-app")                         // Set app name 
+        .addResourceAttribute("env", "prod")          // Add resource-level attributes or tags. These are optional.
+        .addResourceAttribute("stack", "equities")                 
         .build();
 
-LogSink logSink = new LogSink(config, "my-service", "env", "prod", "region", "us-west");
+LogSink logSink = new LogSink(config);
 
 // Log with convenience method
 logSink.log(System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
@@ -81,7 +84,7 @@ Then add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("com.github.cardinalhq:logsink:1.0.4")
+    implementation("com.github.cardinalhq:logsink:1.0.5")
 }
 ```
 

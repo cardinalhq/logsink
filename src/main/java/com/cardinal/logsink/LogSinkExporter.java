@@ -18,7 +18,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.GZIPOutputStream;
+import java.util.Map;import java.util.zip.GZIPOutputStream;
 
 public class LogSinkExporter {
     private static final Logger logger = LoggerFactory.getLogger(LogSinkExporter.class);
@@ -37,38 +37,13 @@ public class LogSinkExporter {
         this.httpClient = httpClient;
     }
 
-    public void sendBatch(String appName, List<LogRecord> records, String... resourceTags) {
-        if (resourceTags.length % 2 != 0) {
-            throw new IllegalArgumentException("Resource tags must be in key-value pairs");
-        }
-
-        List<KeyValue> attributes = new ArrayList<>();
-        // Required attribute
-        attributes.add(KeyValue.newBuilder()
-                .setKey("service.name")
-                .setValue(AnyValue.newBuilder().setStringValue(appName).build())
-                .build());
-
-        // Additional resource-level attributes
-        for (int i = 0; i < resourceTags.length; i += 2) {
-            String key = resourceTags[i];
-            String value = resourceTags[i + 1];
-            attributes.add(KeyValue.newBuilder()
-                    .setKey(key)
-                    .setValue(AnyValue.newBuilder().setStringValue(value).build())
-                    .build());
-        }
-
-        Resource resource = Resource.newBuilder()
-                .addAllAttributes(attributes)
-                .build();
-
+    public void sendBatch(List<LogRecord> records) {
         ScopeLogs scopeLogs = ScopeLogs.newBuilder()
                 .addAllLogRecords(records)
                 .build();
 
         ResourceLogs resourceLogs = ResourceLogs.newBuilder()
-                .setResource(resource)
+                .setResource(this.config.getResource())
                 .addScopeLogs(scopeLogs)
                 .build();
 

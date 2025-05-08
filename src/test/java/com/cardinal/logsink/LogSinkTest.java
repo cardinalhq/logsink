@@ -19,7 +19,7 @@ public class LogSinkTest {
         }
 
         @Override
-        public void sendBatch(String appName, List<LogRecord> records, String... resourceTags) {
+        public void sendBatch(List<LogRecord> records) {
             batchesSent.add(new ArrayList<>(records));
         }
     }
@@ -33,7 +33,7 @@ public class LogSinkTest {
                 .build();
 
         TestExporter exporter = new TestExporter(config);
-        LogSinkBatcher batcher = new LogSinkBatcher(config, exporter, "test-app", "env", "test");
+        LogSinkBatcher batcher = new LogSinkBatcher(config, exporter);
 
         LogRecord record = LogRecord.newBuilder()
                 .setBody(AnyValue.newBuilder().setStringValue("test").build())
@@ -61,7 +61,7 @@ public class LogSinkTest {
                 .build();
 
         TestExporter exporter = new TestExporter(config);
-        LogSinkBatcher batcher = new LogSinkBatcher(config, exporter, "test-app", "env", "test");
+        LogSinkBatcher batcher = new LogSinkBatcher(config, exporter);
 
         LogRecord record = LogRecord.newBuilder()
                 .setBody(AnyValue.newBuilder().setStringValue("manual").build())
