@@ -6,11 +6,12 @@
 
 ## 📖 What does logsink do?
 
-logsink provides a structured way to export logs in the OpenTelemetry Protocol (OTLP) format. It converts raw `LogRecord` entries into `ExportLogsServiceRequest` payloads and sends them over HTTP with gzip compression. It handles batching by count and payload size, and supports periodic background flushing to avoid partial batch loss.
+logsink provides a structured way to export logs in the OpenTelemetry Protocol (OTLP) format. It converts raw `LogRecord` entries into `ExportLogsServiceRequest` payloads and sends them over HTTP with gzip compression.
+It handles batching by count and payload size, and supports periodic background flushing to avoid partial batch loss.
 
 Logsink is suitable for use cases where you:
 - Want fine-grained control over how OTEL logs are exported
-- Need to add metadata like `service.name`, `env`, `region` at the resource level
+- Need to add metadata like `service.name`, `env`, `region` at the resource level. You can add whatever other custom resource-level attributes you want.
 - Are building telemetry pipelines that send logs downstream to OTEL-compatible backends
 
 ---
