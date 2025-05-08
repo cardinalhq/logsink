@@ -7,9 +7,6 @@ group = "com.cardinal"
 version = "1.0.0"
 
 
-group = "org.example"
-version = "1.0-SNAPSHOT"
-
 repositories {
     mavenCentral()
 }
