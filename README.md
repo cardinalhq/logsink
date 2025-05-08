@@ -63,7 +63,6 @@ public class LogSinkConfig {
     String otlpEndpoint;     // e.g. http://localhost:4318/v1/logs, this should be the cardinal receiver endpoint
     String apiKey;           // Optional API key sent as HTTP header
     int maxBatchSize;        // Max number of logs per batch
-    int maxPayloadBytes;     // Max size of batch before flush (bytes)
 }
 ```
 
