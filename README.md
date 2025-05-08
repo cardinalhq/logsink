@@ -124,6 +124,7 @@ logSink.shutdown();
 ```
 
 ✨ Convenience Logging Method
+
 The `LogSink` class provides a convenient method for logging structured data:
 
 ```java

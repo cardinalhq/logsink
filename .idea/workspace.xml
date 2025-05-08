@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5b012fb6-1999-4cc9-8b1c-36d0ed2296e1" name="Changes" comment="Publish to github packages">
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
-    </list>
+    <list default="true" id="5b012fb6-1999-4cc9-8b1c-36d0ed2296e1" name="Changes" comment="Adding import instructions" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -202,7 +200,7 @@
       <workItem from="1746665007909" duration="2731000" />
       <workItem from="1746667751370" duration="102000" />
       <workItem from="1746667856208" duration="848000" />
-      <workItem from="1746669064642" duration="1984000" />
+      <workItem from="1746669064642" duration="4953000" />
     </task>
     <task id="LOCAL-00001" summary="Adding logsink">
       <option name="closed" value="true" />
@@ -252,7 +250,79 @@
       <option name="project" value="LOCAL" />
       <updated>1746670887451</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Publish to github packages">
+      <option name="closed" value="true" />
+      <created>1746674056611</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1746674056611</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Remove publishing tag">
+      <option name="closed" value="true" />
+      <created>1746676886550</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1746676886550</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677078038</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677078038</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677124258</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677124258</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677607123</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677607123</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677740011</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677740011</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677819096</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677819096</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746677862809</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1746677862809</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Adding import instructions">
+      <option name="closed" value="true" />
+      <created>1746678130201</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1746678130201</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -262,7 +332,9 @@
     <MESSAGE value="Adding logsink" />
     <MESSAGE value="Adding README.md" />
     <MESSAGE value="Publish to github packages" />
-    <option name="LAST_COMMIT_MESSAGE" value="Publish to github packages" />
+    <MESSAGE value="Remove publishing tag" />
+    <MESSAGE value="Adding import instructions" />
+    <option name="LAST_COMMIT_MESSAGE" value="Adding import instructions" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
