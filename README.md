@@ -68,23 +68,20 @@ logSink.shutdown();
 
 We publish `logsink` via [JitPack](https://jitpack.io/#cardinalhq/logsink). To use it:
 
-Add JitPack to your `settings.gradle.kts`:
+Add the JitPack repository
 
 ```kotlin
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-    }
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
 }
 ```
 
-Then add the dependency to your `build.gradle.kts`:
+Then add the dependency to your `build.gradle`:
 
 ```kotlin
 dependencies {
-    implementation("com.github.cardinalhq:logsink:1.0.11")
+    implementation("com.github.cardinalhq:logsink:v1.0.11")
 }
 ```
 
