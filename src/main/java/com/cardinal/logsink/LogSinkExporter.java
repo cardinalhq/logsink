@@ -57,27 +57,31 @@ public class LogSinkExporter {
     }
 
     private void sendHttp(byte[] payload) {
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(config.getOTLPEndpoint()))
-                .header(CARDINAL_API_KEY_HEADER, config.getApiKey())
-                .header("Content-Type", "application/x-protobuf")
-                .header("Content-Encoding", "gzip")
-                .POST(HttpRequest.BodyPublishers.ofByteArray(gzip(payload)))
-                .build();
+        try {
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(config.getOTLPEndpoint()))
+                    .header(CARDINAL_API_KEY_HEADER, config.getApiKey())
+                    .header("Content-Type", "application/x-protobuf")
+                    .header("Content-Encoding", "gzip")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(gzip(payload)))
+                    .build();
 
-        this.httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(response -> {
-                    System.out.println("Received response from LogSink: " + response.statusCode());
-                    if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                        logger.debug("Logs sent successfully");
-                    } else {
-                        logger.error("Failed to send logs: {}", response.statusCode());
-                    }
-                })
-                .exceptionally(ex -> {
-                    logger.error("Failed to send logs", ex);
-                    return null;
-                });
+            this.httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        System.out.println("Received response from LogSink: " + response.statusCode());
+                        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                            logger.debug("Logs sent successfully");
+                        } else {
+                            logger.error("Failed to send logs: {}", response.statusCode());
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        logger.error("Failed to send logs", ex);
+                        return null;
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private byte[] gzip(byte[] data) {

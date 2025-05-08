@@ -54,6 +54,8 @@ public class LogSinkBatcher {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } catch(Exception e) {
+            e.printStackTrace();
         }
     }
 
