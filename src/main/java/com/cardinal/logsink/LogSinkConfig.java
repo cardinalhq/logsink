@@ -41,7 +41,7 @@ public class LogSinkConfig {
 
     public static class Builder {
         private String otlpEndpoint;
-        private String apiKey;
+        private String apiKey = "";
         private int maxBatchSize = 100; // default
         private String appName;
         private final Map<String, String> resourceAttributes = new LinkedHashMap<>();
