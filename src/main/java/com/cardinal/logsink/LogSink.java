@@ -33,11 +33,11 @@ public class LogSink {
         logger.info("LogSink initialized with appName: {}, resourceTags: {}", appName, String.join(", ", safeTags));
     }
 
-    public void log(LogRecord record) {
-        batcher.add(record);
+    public boolean log(LogRecord record) {
+        return batcher.add(record);
     }
 
-    public void log(long timestamp, String message, Level level, String... tags) {
+    public boolean log(long timestamp, String message, Level level, String... tags) {
         List<KeyValue> attributes = new ArrayList<>();
 
         // Ensure tags are in key-value pairs
@@ -62,7 +62,7 @@ public class LogSink {
                 .addAllAttributes(attributes)
                 .build();
 
-        batcher.add(record);
+        return batcher.add(record);
     }
 
     private SeverityNumber mapLevelToSeverity(Level level) {

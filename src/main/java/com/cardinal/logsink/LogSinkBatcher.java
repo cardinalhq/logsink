@@ -33,8 +33,8 @@ public class LogSinkBatcher {
         worker.submit(this::runBatchingLoop);
     }
 
-    public void add(LogRecord record) {
-        queue.offer(record); // optionally handle backpressure
+    public boolean add(LogRecord record) {
+        return queue.offer(record); // optionally handle backpressure
     }
 
     public void flush() {
