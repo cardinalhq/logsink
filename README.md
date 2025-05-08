@@ -40,17 +40,20 @@ The main entrypoint for using logsink in your application.
 
 ```java
 // Create a LogSink with resource-level tags (must be key-value pairs)
-LogSinkConfig config = new LogSinkConfig("<CARDINAL_RECEIVER_URL>", "<API_KEY>", <MAX_BATCH_SIZE>);
+LogSinkConfig config = LogSinkConfig.builder()
+        .otlpEndpoint("http://localhost:4318/v1/logs") // Cardinal receiver endpoint
+        .apiKey("your-api-key")                       // Optional API key
+        .maxBatchSize(100)                            // Max logs per batch
+        .build();
+
 LogSink logSink = new LogSink(config, "my-service", "env", "prod", "region", "us-west");
 
 // Log with convenience method
-logSink.log(
-        System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
-        "User login successful",                // message
+logSink.log(System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
+     "User login successful",                // message
 Level.INFO,                              // java.util.logging.Level
         "user.id", "12345",                      // custom log-level attributes (tags)
-        "auth.method", "password"
-        );
+        "auth.method", "password");
 
 
 // Manually flush and shutdown if needed
@@ -58,7 +61,7 @@ logSink.flush();
 logSink.shutdown(); 
 ```
 
-## 📦 Importing logsink
+## 📦 Importing `logsink`
 
 We publish `logsink` via [JitPack](https://jitpack.io/#cardinalhq/logsink). To use it:
 

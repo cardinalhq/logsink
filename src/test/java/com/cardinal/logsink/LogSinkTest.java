@@ -26,11 +26,11 @@ public class LogSinkTest {
 
     @Test
     public void testBatchFlushesOnSize() throws InterruptedException {
-        LogSinkConfig config = new LogSinkConfig(
-                "http://localhost:4318/v1/logs",
-                "fake-api-key",
-                2// low batch size for test
-        );
+        LogSinkConfig config = LogSinkConfig.builder()
+                .setApiKey("fake-api-key")
+                .setOtlpEndpoint("http://localhost:4318/v1/logs")
+                .setMaxBatchSize(2)
+                .build();
 
         TestExporter exporter = new TestExporter(config);
         LogSinkBatcher batcher = new LogSinkBatcher(config, exporter, "test-app", "env", "test");
@@ -54,11 +54,11 @@ public class LogSinkTest {
 
     @Test
     public void testFlushManual() throws InterruptedException {
-        LogSinkConfig config = new LogSinkConfig(
-                "http://localhost:4318/v1/logs",
-                "fake-api-key",
-                100
-        );
+        LogSinkConfig config = LogSinkConfig.builder()
+                .setApiKey("fake-api-key")
+                .setOtlpEndpoint("http://localhost:4318/v1/logs")
+                .setMaxBatchSize(100)
+                .build();
 
         TestExporter exporter = new TestExporter(config);
         LogSinkBatcher batcher = new LogSinkBatcher(config, exporter, "test-app", "env", "test");

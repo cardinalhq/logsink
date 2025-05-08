@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 public class LogSinkExporterTest {
 
     @Test
@@ -25,11 +26,11 @@ public class LogSinkExporterTest {
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         // Create exporter with mock client
-        LogSinkConfig config = new LogSinkConfig(
-                "http://localhost:4318/v1/logs",
-                "fake-api-key",
-                100
-        );
+        LogSinkConfig config = LogSinkConfig.builder()
+                .setApiKey("fake-api-key")
+                .setOtlpEndpoint("http://localhost:4318/v1/logs")
+                .setMaxBatchSize(100)
+                .build();
         LogSinkExporter exporter = new LogSinkExporter(config, mockHttpClient);
 
         LogRecord record = LogRecord.newBuilder()
