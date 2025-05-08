@@ -48,12 +48,10 @@ logSink.log(
         System.currentTimeMillis() * 1_000_000,  // timestamp in nanoseconds
         "User login successful",                // message
 Level.INFO,                              // java.util.logging.Level
-        "user.id", "12345",                      // log-level attributes (tags)
+        "user.id", "12345",                      // custom log-level attributes (tags)
         "auth.method", "password"
         );
 
-// Log using a raw OpenTelemetry LogRecord
-        logSink.log(record);
 
 // Manually flush and shutdown if needed
 logSink.flush();
