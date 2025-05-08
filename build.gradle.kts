@@ -1,3 +1,25 @@
+publishing {
+    publications {
+        create<MavenPublication>("gpr") {
+            from(components["java"])
+            groupId = "com.cardinal"
+            artifactId = "logsink"
+            version = "1.0.0" // or use versioning from git tag
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPO_NAME")
+            credentials {
+                username = System.getenv("USERNAME")
+                password = System.getenv("TOKEN")
+            }
+        }
+    }
+}
+
 plugins {
     id("java")
 }
