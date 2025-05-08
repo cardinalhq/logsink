@@ -81,7 +81,7 @@ Then add the dependency to your `build.gradle`:
 
 ```kotlin
 dependencies {
-    implementation("com.github.cardinalhq:logsink:v1.0.14")
+    implementation("com.github.cardinalhq:logsink:v1.0.15")
 }
 ```
 
