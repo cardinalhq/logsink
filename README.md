@@ -30,10 +30,9 @@ We publish this library to [jitpack.io](https://jitpack.io/#cardinalhq/logsink)
 	}
 ```
 
+In your `build.gradle` file, add the following dependency:
 ```aiignore
-dependencies {
-	        implementation 'com.github.cardinalhq:logsink:1.0.4'
-	}
+implementation 'com.github.cardinalhq:logsink:1.0.4'
 ```
 
 
