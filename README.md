@@ -7,10 +7,10 @@ It provides efficient batching, compression, and delivery of structured logs to 
 
 ## 📖 What Does logsink Do?
 
-logsink helps you:
+`logsink` helps you:
 
 - Emit OTEL-compliant logs from Java apps
-- Control export batching by event count or payload size
+- Control export batching by event count
 - Automatically gzip and send logs over HTTP
 - Set custom `resource-level` and `record-level` attributes (like `service.name`, `env`, etc.)
 - Integrate easily with any OTLP-compatible observability pipeline
