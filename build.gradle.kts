@@ -19,7 +19,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPO_NAME")
+            url = uri("https://maven.pkg.github.com/cardinalhq/logsink")
             credentials {
                 username = System.getenv("USERNAME")
                 password = System.getenv("TOKEN")

@@ -4,8 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5b012fb6-1999-4cc9-8b1c-36d0ed2296e1" name="Changes" comment="Adding README.md">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    <list default="true" id="5b012fb6-1999-4cc9-8b1c-36d0ed2296e1" name="Changes" comment="Publish to github packages">
+      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -202,7 +202,7 @@
       <workItem from="1746665007909" duration="2731000" />
       <workItem from="1746667751370" duration="102000" />
       <workItem from="1746667856208" duration="848000" />
-      <workItem from="1746669064642" duration="980000" />
+      <workItem from="1746669064642" duration="1984000" />
     </task>
     <task id="LOCAL-00001" summary="Adding logsink">
       <option name="closed" value="true" />
@@ -228,7 +228,31 @@
       <option name="project" value="LOCAL" />
       <updated>1746669113283</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Adding README.md">
+      <option name="closed" value="true" />
+      <created>1746670431558</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1746670431558</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Publish to github packages">
+      <option name="closed" value="true" />
+      <created>1746670755885</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1746670755885</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Publish to github packages">
+      <option name="closed" value="true" />
+      <created>1746670887451</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1746670887451</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -237,7 +261,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Adding logsink" />
     <MESSAGE value="Adding README.md" />
-    <option name="LAST_COMMIT_MESSAGE" value="Adding README.md" />
+    <MESSAGE value="Publish to github packages" />
+    <option name="LAST_COMMIT_MESSAGE" value="Publish to github packages" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
