@@ -43,6 +43,7 @@ The main entrypoint for using `logsink` in your application.
 LogSinkConfig config = LogSinkConfig.builder()
         .otlpEndpoint("http://localhost:4318/v1/logs") // OTLP receiver endpoint
         .apiKey("your-api-key")                       // Optional API key
+        .setQueueSize(100000)                 // Max queue size
         .maxBatchSize(100)                            // Max logs per batch
         .setAppName("my-app")                         // Set app name 
         .addResourceAttribute("env", "prod")          // Add resource-level attributes or tags. These are optional.
