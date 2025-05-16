@@ -14,7 +14,7 @@ public class LogSinkBatcher {
     private final ExecutorService worker;
 
     public LogSinkBatcher(LogSinkConfig config, LogSinkExporter exporter) {
-        this.queue = new LinkedBlockingQueue<>();
+        this.queue = new LinkedBlockingQueue<>(config.getQueueSize());
         this.exporter = exporter;
         this.maxBatchSize = config.getMaxBatchSize();
 

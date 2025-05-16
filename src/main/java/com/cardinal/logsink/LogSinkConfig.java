@@ -11,12 +11,14 @@ public class LogSinkConfig {
     private final String apiKey;
     private final int maxBatchSize;
     private final Resource resource;
+    private final int queueSize; // default
 
     private LogSinkConfig(Builder builder) {
         this.otlpEndpoint = builder.otlpEndpoint;
         this.apiKey = builder.apiKey;
         this.maxBatchSize = builder.maxBatchSize;
         this.resource = builder.resource;
+        this.queueSize = builder.queueSize;
     }
 
     public String getOTLPEndpoint() {
@@ -25,6 +27,10 @@ public class LogSinkConfig {
 
     public String getApiKey() {
         return apiKey;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
     }
 
     public int getMaxBatchSize() {
@@ -46,6 +52,13 @@ public class LogSinkConfig {
         private String appName;
         private final Map<String, String> resourceAttributes = new LinkedHashMap<>();
         private Resource resource;
+        private int queueSize = 1000;
+
+        public Builder setQueueSize(int queueSize) {
+            this.queueSize = queueSize;
+            return this;
+        }
+
 
         public Builder setOtlpEndpoint(String otlpEndpoint) {
             this.otlpEndpoint = otlpEndpoint;
