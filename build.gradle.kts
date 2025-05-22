@@ -35,6 +35,9 @@ dependencies {
     // Log4j2 core (does the actual logging)
     runtimeOnly("org.apache.logging.log4j:log4j-core:2.22.1")
 
+    // Jackson
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.19.0")
+
     implementation("io.opentelemetry:opentelemetry-sdk:1.49.0")
     implementation("io.opentelemetry:opentelemetry-sdk-logs:1.49.0")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.5.0-alpha")
