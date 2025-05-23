@@ -1,15 +1,34 @@
 package com.cardinal.logsink;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.logging.Logger;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.logs.v1.SeverityNumber;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LogSinkConsumer {
+    private static final Pattern LEVEL_PATTERN = Pattern.compile(
+            "\\b(?<lvl>SEVERE|ERROR|WARNING|WARN|INFO|DEBUG|FINE)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
     private static final String IN_PROGRESS_FILES = "in_progress_files.json";
     private static final Logger LOGGER = Logger.getLogger(LogSinkConsumer.class.getName());
 
@@ -26,35 +45,57 @@ public class LogSinkConsumer {
         restoreEnqueuedFiles();
     }
 
-
     public synchronized void enqueue(String logPathStr) throws IOException {
         Path logPath = Paths.get(logPathStr).toAbsolutePath().normalize();
-
         if (!Files.exists(logPath)) {
             throw new DeletedFileException("Log file does not exist: " + logPath);
         }
-
         if (tasks.containsKey(logPath)) return;
 
         persistFileList(logPath);
 
-        Future<?> future = this.executor.submit(() -> {
-            Path checkpointPath = this.checkpointDir.resolve(safeFileName(logPath.toString()) + ".checkpoint");
+        Future<?> future = executor.submit(() -> {
+            Path checkpointPath = checkpointDir.resolve(safeFileName(logPath.toString()) + ".checkpoint");
             long lastOffset = loadCheckpoint(checkpointPath);
 
             try (RandomAccessFile file = new RandomAccessFile(logPath.toFile(), "r")) {
                 file.seek(lastOffset);
 
+                long bufferStart = -1;
+                int numBuffered = 0;
+                List<PendingLog> pending = new ArrayList<>();
+
                 while (!Thread.currentThread().isInterrupted()) {
                     String line = file.readLine();
-                    if (line != null) {
-                        process(logPath.toString(), line);
-                        lastOffset = file.getFilePointer();
-                        saveCheckpoint(checkpointPath, lastOffset);
-                    } else {
-                        LOGGER.info("Finished reading " + logPath);
+
+                    if (line == null) {
+                        if (!pending.isEmpty() && process(pending)) {
+                            checkpointAll(pending);
+                        }
                         cleanupFile(logPath, checkpointPath);
                         break;
+                    }
+
+                    if (bufferStart < 0) {
+                        bufferStart = System.currentTimeMillis();
+                    }
+
+                    long offset = file.getFilePointer();
+                    pending.add(new PendingLog(buildRecord(line), checkpointPath, offset));
+                    numBuffered++;
+
+                    long elapsed = System.currentTimeMillis() - bufferStart;
+                    if (elapsed >= 5_000 || numBuffered >= 100) {
+                        boolean success = process(pending);
+                        if (success) {
+                            checkpointAll(pending);
+                            pending.clear();
+                            numBuffered = 0;
+                            bufferStart = -1;
+                        } else {
+                            LOGGER.warning("Batch export failed; will retry");
+                            bufferStart = System.currentTimeMillis();
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -63,6 +104,44 @@ public class LogSinkConsumer {
         });
 
         tasks.put(logPath, future);
+    }
+
+    private LogRecord buildRecord(String line) {
+        SeverityNumber sev = extractSeverity(line);
+        return LogRecord.newBuilder()
+                .setTimeUnixNano(System.currentTimeMillis() * 1_000_000)
+                .setSeverityNumberValue(sev.getNumber())
+                .setSeverityText(sev.name())
+                .setBody(AnyValue.newBuilder().setStringValue(line).build())
+                .build();
+    }
+
+    private boolean process(List<PendingLog> batch) {
+        // TODO: implement export logic; for now always fail
+        return false;
+    }
+
+    private void checkpointAll(List<PendingLog> batch) {
+        long maxOffset = batch.stream()
+                .mapToLong(p -> p.offset)
+                .max()
+                .orElse(0L);
+        saveCheckpoint(batch.get(0).checkpointPath, maxOffset);
+    }
+
+    private SeverityNumber extractSeverity(String logLine) {
+        Matcher m = LEVEL_PATTERN.matcher(logLine);
+        if (m.find()) {
+            String token = m.group("lvl").toUpperCase();
+            return switch (token) {
+                case "ERROR", "SEVERE" -> SeverityNumber.SEVERITY_NUMBER_ERROR;
+                case "WARN", "WARNING" -> SeverityNumber.SEVERITY_NUMBER_WARN;
+                case "DEBUG", "FINE" -> SeverityNumber.SEVERITY_NUMBER_DEBUG;
+                case "INFO" -> SeverityNumber.SEVERITY_NUMBER_INFO;
+                default -> SeverityNumber.SEVERITY_NUMBER_UNSPECIFIED;
+            };
+        }
+        return SeverityNumber.SEVERITY_NUMBER_UNSPECIFIED;
     }
 
     private long loadCheckpoint(Path checkpointPath) {
@@ -86,11 +165,6 @@ public class LogSinkConsumer {
         }
     }
 
-    private void process(String file, String line) {
-        // TODO: replace with your real processing logic
-        System.out.printf("[%s] %s%n", file, line);
-    }
-
     private String safeFileName(String path) {
         return path.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
@@ -98,7 +172,8 @@ public class LogSinkConsumer {
     private synchronized void persistFileList(Path newPath) throws IOException {
         List<String> current = new ArrayList<>();
         if (Files.exists(fileListPath)) {
-            current = objectMapper.readValue(fileListPath.toFile(), new TypeReference<List<String>>() {});
+            current = objectMapper.readValue(fileListPath.toFile(), new TypeReference<>() {
+            });
         }
         String p = newPath.toString();
         if (!current.contains(p)) {
@@ -109,16 +184,16 @@ public class LogSinkConsumer {
 
     private void restoreEnqueuedFiles() throws IOException {
         if (!Files.exists(fileListPath)) return;
-
-        List<String> paths = objectMapper.readValue(fileListPath.toFile(), new TypeReference<List<String>>() {});
+        List<String> paths = objectMapper.readValue(fileListPath.toFile(), new TypeReference<>() {
+        });
         for (String p : paths) {
             try {
                 enqueue(p);
             } catch (DeletedFileException dfe) {
-                LOGGER.warning("Previously-enqueued file no longer exists; cleaning up: " + p);
+                LOGGER.warning("Previously-enqueued file missing; cleaning up: " + p);
                 Path logPath = Paths.get(p);
-                Path checkpointPath = checkpointDir.resolve(safeFileName(p) + ".checkpoint");
-                cleanupFile(logPath, checkpointPath);
+                Path cp = checkpointDir.resolve(safeFileName(p) + ".checkpoint");
+                cleanupFile(logPath, cp);
             } catch (IOException ioe) {
                 LOGGER.warning("Failed to re-enqueue " + p + ": " + ioe.getMessage());
             }
@@ -127,15 +202,14 @@ public class LogSinkConsumer {
 
     private synchronized void cleanupFile(Path logPath, Path checkpointPath) {
         tasks.remove(logPath);
-
         try {
             if (Files.exists(fileListPath)) {
-                List<String> current = objectMapper.readValue(fileListPath.toFile(), new TypeReference<List<String>>() {});
+                List<String> current = objectMapper.readValue(fileListPath.toFile(), new TypeReference<>() {
+                });
                 current.remove(logPath.toString());
                 objectMapper.writeValue(fileListPath.toFile(), current);
             }
             Files.deleteIfExists(checkpointPath);
-
             LOGGER.info("Cleaned up tracking for: " + logPath);
         } catch (IOException e) {
             LOGGER.warning("Error cleaning up state for " + logPath + ": " + e.getMessage());
@@ -149,12 +223,10 @@ public class LogSinkConsumer {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            System.err.println("Usage: java com.cardinal.logsink.LogFileConsumer <log1> [log2 ...]");
+            System.err.println("Usage: java com.cardinal.logsink.LogSinkConsumer <log1> [log2 ...]");
             System.exit(1);
         }
-
         LogSinkConsumer consumer = new LogSinkConsumer(Paths.get("./checkpoints"));
-
         for (String log : args) {
             try {
                 consumer.enqueue(log);
@@ -162,7 +234,6 @@ public class LogSinkConsumer {
                 System.err.println("Cannot enqueue missing file: " + dfe.getMessage());
             }
         }
-
         Runtime.getRuntime().addShutdownHook(new Thread(consumer::shutdown));
         Thread.currentThread().join();
     }
@@ -172,4 +243,6 @@ public class LogSinkConsumer {
             super(message);
         }
     }
+
+    public record PendingLog(LogRecord record, Path checkpointPath, long offset) {}
 }
