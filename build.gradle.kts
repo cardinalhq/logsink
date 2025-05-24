@@ -49,11 +49,11 @@ publishing {
 
     repositories {
         maven {
-            name = "OSSRH"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            name = "Central"
+            url  = uri("https://central.sonatype.org/api/v1/publish/maven2/")
             credentials {
-                username = "token"
-                password = System.getenv("MAVEN_CENTRAL_PASSWORD")
+                username = System.getenv("MAVEN_CENTRAL_USER_NAME")
+                password = System.getenv("MAVEN_CENTRAL_TOKEN")
             }
         }
     }
