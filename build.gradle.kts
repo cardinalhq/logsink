@@ -17,46 +17,13 @@ repositories {
 }
 
 publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-
-            pom {
-                name.set("logsink")
-                description.set("A lightweight OTLP logs exporter for Java using OpenTelemetry.")
-                url.set("https://github.com/cardinalhq/logsink")
-
-                licenses {
-                    license {
-                        name.set("Apache-2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                    }
-                }
-
-                developers {
-                    developer {
-                        id.set("ruchir")
-                        name.set("Ruchir Jha")
-                        email.set("ruchir@cardinalhq.io")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:https://github.com/cardinalhq/logsink.git")
-                    developerConnection.set("scm:git:ssh://git@github.com:cardinalhq/logsink.git")
-                    url.set("https://github.com/cardinalhq/logsink")
-                }
-            }
-        }
-    }
-
     repositories {
         maven {
-            name = "MavenCentral"
+            name = "OSSRH"
             url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
             credentials {
                 username = "token"
-                password = System.getenv("MAVEN_CENTRAL_TOKEN")
+                password = System.getenv("MAVEN_CENTRAL_TOKEN") // GitHub secret
             }
         }
     }
