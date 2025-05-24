@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.cardinalhq"
-version = "1.0.0" // or whatever release
+version = "1.0.25"
 
 java {
     withJavadocJar()
