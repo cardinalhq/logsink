@@ -50,7 +50,6 @@ publishing {
     repositories {
         maven {
             name = "Central"
-            url  = uri("https://central.sonatype.org/api/v1/publish/maven2/")
             credentials {
                 username = System.getenv("MAVEN_CENTRAL_USER_NAME")
                 password = System.getenv("MAVEN_CENTRAL_TOKEN")
