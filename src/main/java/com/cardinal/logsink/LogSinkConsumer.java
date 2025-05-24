@@ -23,10 +23,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
@@ -59,6 +56,72 @@ public class LogSinkConsumer {
         restoreEnqueuedFiles();
     }
 
+    protected void processLogFile(Path logPath) {
+        Path checkpointPath = checkpointDir.resolve(logPath.getFileName() + ".checkpoint");
+        long lastOffset = loadCheckpoint(checkpointPath);
+
+        try (RandomAccessFile file = new RandomAccessFile(logPath.toFile(), "r")) {
+            file.seek(lastOffset);
+
+            long bufferStart = -1;
+            int numBuffered = 0;
+            List<PendingLog> pending = new ArrayList<>();
+
+            StringBuilder current = new StringBuilder();
+            long recordStartOffset = lastOffset;
+
+            while (true) {
+                long lineStart = file.getFilePointer();
+                String line = file.readLine();
+
+                if (line == null) {
+                    if (!current.isEmpty()) {
+                        pending.add(makePending(current.toString(), recordStartOffset, checkpointPath));
+                    }
+                    boolean success = pending.isEmpty() || process(logPath.toString(), pending);
+
+                    if (success) {
+                        checkpointAll(pending);
+                        cleanupFile(logPath, checkpointPath);
+                    }
+                    break;
+                }
+
+                boolean isStart = this.recordStartPattern.matcher(line).find();
+                if (isStart) {
+                    if (!current.isEmpty()) {
+                        long recordEndOffset = file.getFilePointer();
+                        pending.add(makePending(current.toString(), recordEndOffset, checkpointPath));
+                    }
+                    current.setLength(0);
+                    recordStartOffset = lineStart;
+                }
+                current.append(line).append("\n");
+
+                if (bufferStart < 0) {
+                    bufferStart = System.currentTimeMillis();
+                }
+                numBuffered++;
+
+                long elapsed = System.currentTimeMillis() - bufferStart;
+                if (!pending.isEmpty() && (elapsed >= config.getPublishFrequency() || numBuffered >= config.getMaxBatchSize())) {
+                    boolean success = process(logPath.toString(), pending);
+                    if (success) {
+                        checkpointAll(pending);
+                        pending.clear();
+                        numBuffered = 0;
+                        bufferStart = -1;
+                    } else {
+                        logger.warn("Batch export failed; will retry");
+                        bufferStart = System.currentTimeMillis();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error reading {}: {}", logPath, e.getMessage());
+        }
+    }
+
     public synchronized void enqueue(String logPathStr) throws IOException {
         Path logPath = Paths.get(logPathStr).toAbsolutePath().normalize();
         if (!Files.exists(logPath)) {
@@ -68,71 +131,7 @@ public class LogSinkConsumer {
 
         persistFileList(logPath);
 
-        Future<?> future = executor.submit(() -> {
-            Path checkpointPath = checkpointDir.resolve(logPath.getFileName() + ".checkpoint");
-            long lastOffset = loadCheckpoint(checkpointPath);
-
-            try (RandomAccessFile file = new RandomAccessFile(logPath.toFile(), "r")) {
-                file.seek(lastOffset);
-
-                long bufferStart = -1;
-                int numBuffered = 0;
-                List<PendingLog> pending = new ArrayList<>();
-
-                StringBuilder current = new StringBuilder();
-                long recordStartOffset = lastOffset;
-
-                while (!Thread.currentThread().isInterrupted()) {
-                    long lineStart = file.getFilePointer();
-                    String line = file.readLine();
-
-                    if (line == null) {
-                        if (!current.isEmpty()) {
-                            pending.add(makePending(current.toString(), recordStartOffset, checkpointPath));
-                        }
-                        if (!pending.isEmpty() && process(logPathStr, pending)) {
-                            checkpointAll(pending);
-                        }
-                        cleanupFile(logPath, checkpointPath);
-                        break;
-                    }
-
-                    boolean isStart = this.recordStartPattern.matcher(line).find();
-                    if (isStart) {
-                        // New record start -> flush previous buffer as single log
-                        if (!current.isEmpty()) {
-                            pending.add(makePending(current.toString(), recordStartOffset, checkpointPath));
-                        }
-                        current.setLength(0);
-                        recordStartOffset = lineStart;
-                    }
-                    current.append(line).append("\n");
-
-                    // First buffered record sets timer
-                    if (bufferStart < 0) {
-                        bufferStart = System.currentTimeMillis();
-                    }
-                    numBuffered++;
-
-                    long elapsed = System.currentTimeMillis() - bufferStart;
-                    if (!pending.isEmpty() && (elapsed >= this.config.getPublishFrequency() || numBuffered >= this.config.getMaxBatchSize())) {
-                        boolean success = process(logPathStr, pending);
-                        if (success) {
-                            checkpointAll(pending);
-                            pending.clear();
-                            numBuffered = 0;
-                            bufferStart = -1;
-                        } else {
-                            logger.warn("Batch export failed; will retry");
-                            bufferStart = System.currentTimeMillis();
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Error reading {}: {}", logPath, e.getMessage());
-            }
-        });
-
+        Future<?> future = executor.submit(() -> processLogFile(logPath));
         tasks.put(logPath, future);
     }
 
@@ -202,20 +201,8 @@ public class LogSinkConsumer {
                     .POST(HttpRequest.BodyPublishers.ofByteArray(gzip(payload)))
                     .build();
 
-            this.httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> {
-                        System.out.println("Received response from LogSink: " + response.statusCode());
-                        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                            logger.info("Logs sent successfully");
-                        } else {
-                            logger.error("Failed to send logs: {}", response.statusCode());
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        logger.error("Failed to send logs", ex);
-                        return null;
-                    });
-            return true;
+            HttpResponse<String> response = this.httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() >= 200 && response.statusCode() < 300;
         } catch (Exception e) {
             logger.error("Failed to send logs", e);
             return false;
@@ -223,7 +210,7 @@ public class LogSinkConsumer {
     }
 
 
-    private void checkpointAll(List<PendingLog> batch) {
+    protected void checkpointAll(List<PendingLog> batch) {
         long maxOffset = batch.stream()
                 .mapToLong(p -> p.offset)
                 .max()
@@ -266,10 +253,6 @@ public class LogSinkConsumer {
             logger.warn("Failed to write checkpoint for {}: {}", checkpointPath, e.getMessage());
         }
     }
-
-//    private String safeFileName(String path) {
-//        return path.replaceAll("[^a-zA-Z0-9._-]", "_");
-//    }
 
     private synchronized void persistFileList(Path newPath) throws IOException {
         List<String> current = new ArrayList<>();

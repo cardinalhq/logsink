@@ -69,12 +69,49 @@ public class LogSinkConsumerTest {
 
         consumer.enqueue(logFile.toString());
 
-        Thread.sleep(2000);
-
         List<LogSinkConsumer.PendingLog> pending =  consumer.getProcessedBatches();
         assertFalse(pending.isEmpty());
         assertEquals(2, pending.size());
 
         consumer.shutdown();
+    }
+
+    @Test
+    public void testPartialProcessingAndCheckpointPersistence() throws Exception {
+        Path logFile = dir.resolve("partial.log");
+        String[] lines = {
+                "2024-01-01 00:00:01 INFO line one",
+                "2024-01-01 00:00:02 INFO line two",
+                "2024-01-01 00:00:03 ERROR line three"
+        };
+        Files.write(logFile, String.join("\n", lines).getBytes());
+
+        LogSinkConfig config = LogSinkConfig.builder()
+                .setOtlpEndpoint("http://localhost:4318/v1/logs")
+                .setApiKey("dummy")
+                .setMaxBatchSize(1)
+                .setPublishFrequency(100)
+                .setCheckpointPath(dir)
+                .setAttributesDeriver(p -> Map.of("service.name", "test"))
+                .setRecordStartPattern(Pattern.compile("^\\d{4}-\\d{2}-\\d{2}"))
+                .build();
+
+        TestableLogSinkConsumer consumer = new TestableLogSinkConsumer(config);
+        consumer.setMaxRecordsToProcess(1);
+        consumer.enqueue(logFile.toString());
+
+        assertEquals(1, consumer.getProcessedCount(), "Only one record should be processed");
+
+        Path checkpointPath = dir.resolve(logFile.getFileName() + ".checkpoint");
+        assertTrue(Files.exists(checkpointPath), "Checkpoint file should exist after partial processing");
+
+        long offset = Long.parseLong(Files.readString(checkpointPath));
+        assertTrue(offset > 0, "Checkpoint offset should be non-zero");
+
+        // Second run: resume and process remaining
+        TestableLogSinkConsumer restarted = new TestableLogSinkConsumer(config);
+        restarted.enqueue(logFile.toString());
+
+        assertTrue(restarted.getProcessedCount() >= 1, "Remaining records should be processed");
     }
 }
