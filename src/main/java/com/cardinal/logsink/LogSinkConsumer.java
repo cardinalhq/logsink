@@ -69,7 +69,7 @@ public class LogSinkConsumer {
         persistFileList(logPath);
 
         Future<?> future = executor.submit(() -> {
-            Path checkpointPath = checkpointDir.resolve(safeFileName(logPath.toString()) + ".checkpoint");
+            Path checkpointPath = checkpointDir.resolve(logPath.getFileName() + ".checkpoint");
             long lastOffset = loadCheckpoint(checkpointPath);
 
             try (RandomAccessFile file = new RandomAccessFile(logPath.toFile(), "r")) {
@@ -87,6 +87,9 @@ public class LogSinkConsumer {
                     String line = file.readLine();
 
                     if (line == null) {
+                        if (!current.isEmpty()) {
+                            pending.add(makePending(current.toString(), recordStartOffset, checkpointPath));
+                        }
                         if (!pending.isEmpty() && process(logPathStr, pending)) {
                             checkpointAll(pending);
                         }
@@ -112,7 +115,7 @@ public class LogSinkConsumer {
                     numBuffered++;
 
                     long elapsed = System.currentTimeMillis() - bufferStart;
-                    if (elapsed >= this.config.getPublishFrequency() || numBuffered >= this.config.getMaxBatchSize()) {
+                    if (!pending.isEmpty() && (elapsed >= this.config.getPublishFrequency() || numBuffered >= this.config.getMaxBatchSize())) {
                         boolean success = process(logPathStr, pending);
                         if (success) {
                             checkpointAll(pending);
@@ -144,7 +147,7 @@ public class LogSinkConsumer {
         return new PendingLog(record, checkpointPath, offset);
     }
 
-    private boolean process(String filePath, List<PendingLog> batch) {
+    protected boolean process(String filePath, List<PendingLog> batch) {
         List<LogRecord> records = new ArrayList<>();
         for (PendingLog pending : batch) {
             LogRecord record = pending.record;
@@ -264,9 +267,9 @@ public class LogSinkConsumer {
         }
     }
 
-    private String safeFileName(String path) {
-        return path.replaceAll("[^a-zA-Z0-9._-]", "_");
-    }
+//    private String safeFileName(String path) {
+//        return path.replaceAll("[^a-zA-Z0-9._-]", "_");
+//    }
 
     private synchronized void persistFileList(Path newPath) throws IOException {
         List<String> current = new ArrayList<>();
@@ -291,7 +294,7 @@ public class LogSinkConsumer {
             } catch (DeletedFileException dfe) {
                 logger.warn("Previously-enqueued file missing; cleaning up: {}", p);
                 Path logPath = Paths.get(p);
-                Path cp = checkpointDir.resolve(safeFileName(p) + ".checkpoint");
+                Path cp = checkpointDir.resolve(p + ".checkpoint");
                 cleanupFile(logPath, cp);
             } catch (IOException ioe) {
                 logger.warn("Failed to re-enqueue {}: {}", p, ioe.getMessage());
