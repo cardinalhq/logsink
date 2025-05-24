@@ -1,24 +1,69 @@
 plugins {
-    id("java")
-    id("maven-publish")
+    `java-library`
+    `maven-publish`
+    signing
 }
 
-group = "com.cardinal"
-version = "1.0.18"
+group = "io.cardinalhq"
+version = "1.0.0" // or whatever release
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
 
 publishing {
     publications {
-        create<MavenPublication>("gpr") {
+        create<MavenPublication>("mavenJava") {
             from(components["java"])
-            artifactId = "logsink"
+
+            pom {
+                name.set("logsink")
+                description.set("A lightweight OTLP logs exporter for Java using OpenTelemetry.")
+                url.set("https://github.com/cardinalhq/logsink")
+
+                licenses {
+                    license {
+                        name.set("Apache-2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("ruchir")
+                        name.set("Ruchir Jha")
+                        email.set("ruchir@cardinalhq.io")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:https://github.com/cardinalhq/logsink.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:cardinalhq/logsink.git")
+                    url.set("https://github.com/cardinalhq/logsink")
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "MavenCentral"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = "token" // literally "token"
+                password = System.getenv("MAVEN_CENTRAL_TOKEN")
+            }
         }
     }
 }
 
-
-repositories {
-    mavenCentral()
+signing {
+    useInMemoryPgpKeys(
+        System.getenv("GPG_PRIVATE_KEY"),
+        System.getenv("GPG_PASSPHRASE")
+    )
+    sign(publishing.publications["mavenJava"])
 }
 
 dependencies {
@@ -34,6 +79,9 @@ dependencies {
 
     // Log4j2 core (does the actual logging)
     runtimeOnly("org.apache.logging.log4j:log4j-core:2.22.1")
+
+    // Jackson
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.19.0")
 
     implementation("io.opentelemetry:opentelemetry-sdk:1.49.0")
     implementation("io.opentelemetry:opentelemetry-sdk-logs:1.49.0")
