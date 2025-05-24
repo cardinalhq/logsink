@@ -12,6 +12,10 @@ java {
     withSourcesJar()
 }
 
+repositories {
+    mavenCentral()
+}
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
