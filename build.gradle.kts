@@ -50,7 +50,7 @@ publishing {
     repositories {
         maven {
             name = "Central"
-            url  = uri("https://central.sonatype.com/api/v1/publisher/upload")
+            url  = uri("https://central.sonatype.com")
             credentials {
                 username = System.getenv("MAVEN_CENTRAL_USER_NAME")
                 password = System.getenv("MAVEN_CENTRAL_TOKEN")
@@ -64,11 +64,7 @@ signing {
         System.getenv("GPG_PRIVATE_KEY"),
         System.getenv("GPG_PASSPHRASE")
     )
-
-    // must be delayed until after `mavenJava` is created
-    afterEvaluate {
-        sign(publishing.publications["mavenJava"])
-    }
+    sign(publishing.publications["mavenJava"])
 }
 
 dependencies {

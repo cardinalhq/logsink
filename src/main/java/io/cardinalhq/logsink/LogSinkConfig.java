@@ -1,8 +1,4 @@
-package com.cardinal.logsink;
-
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.resource.v1.Resource;
+package io.cardinalhq.logsink;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

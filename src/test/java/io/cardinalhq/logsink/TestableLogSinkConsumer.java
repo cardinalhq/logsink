@@ -1,4 +1,4 @@
-package com.cardinal.logsink;
+package io.cardinalhq.logsink;
 
 import java.io.IOException;
 import java.nio.file.Path;

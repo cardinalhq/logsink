@@ -1,4 +1,4 @@
-package com.cardinal.logsink;
+package io.cardinalhq.logsink;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
