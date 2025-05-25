@@ -10,7 +10,7 @@ It reads from plain log files, groups lines into structured records, batches the
 - Groups multi line entries (e.g., stack traces) using a customizable regex to detect record boundaries.
 - Extracts log severity (INFO, WARN, ERROR) from content and maps to OTEL SeverityNumber (to filter by log level in Cardinal UI).
 - Converts raw text into OTEL LogRecords, including full body and timestamp. 
-- Attaches resource-level attributes like service.name or env via a user-defined function. Goal is for you to be able to filter by app in CardinalUI)
+- Attaches resource-level attributes like service.name or env via a user-defined function. This is to allow for filtering by app in CardinalUI)
 - Batched Processing, flushing either on batch size or elapsed time.
 - Compresses and sends logs over OTLP/HTTP using GZIP and protobuf.
 - Persists checkpoints per file, ensuring no logs are lost or reprocessed on restart.
