@@ -37,7 +37,7 @@ public class LogSinkConsumer {
     // Pattern: start of line matches ISO-like timestamp: YYYY-MM-DD[ T]HH:MM:SS
     private static final String IN_PROGRESS_FILES = "in_progress_files.json";
 
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private final LogSinkConfig config;
     private final Map<Path, Future<?>> tasks = new ConcurrentHashMap<>();
     private final Path checkpointDir;
