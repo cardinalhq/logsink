@@ -6,16 +6,33 @@ It reads from plain log files, groups lines into structured records, batches the
 ⸻
 
 ✅ What does logsink do?
-•	🧠 Detects log record boundaries using regex (e.g., by timestamp)
-•	📄 Converts raw log lines into OTEL LogRecord messages
-•	🧵 Buffers and batches logs with configurable frequency and batch size
-•	📤 Compresses and sends batches over OTLP/HTTP using GZIP
-•	🪪 Attaches resource-level attributes like service.name, env, etc.
-•	🔁 Supports file checkpointing to resume partial processing after restart
+- 🧠 Detects log record boundaries using regex (e.g., by timestamp)
+- 📄 Converts raw log lines into OTEL LogRecord messages
+- 🧵 Buffers and batches logs with configurable frequency and batch size
+- 📤 Compresses and sends batches over OTLP/HTTP using GZIP
+- 🪪 Attaches resource-level attributes like service.name, env, etc.
+- 🔁 Supports file checkpointing to resume partial processing after restart
 
 
 ## ✨ Quick Start
 
+`Gradle`:
+```java
+dependencies {
+    implementation 'io.cardinalhq:logsink:1.0.25'
+}
+```
+
+`Maven`: 
+```java
+<dependency>
+  <groupId>io.cardinalhq</groupId>
+  <artifactId>logsink</artifactId>
+  <version>1.0.25</version>
+</dependency>
+```
+
+### Example Usage
 ```java
 LogSinkConfig config = LogSinkConfig.builder()
     .setOtlpEndpoint("http://localhost:4318/v1/logs") // OTLP-compatible collector
