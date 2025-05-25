@@ -52,7 +52,7 @@ publishing {
             name = "Sonatype"
             url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
             credentials {
-                username = "token"
+                username = "XiLCs6KD"
                 password = System.getenv("MAVEN_CENTRAL_TOKEN")
             }
         }
