@@ -6,12 +6,18 @@ It reads from plain log files, groups lines into structured records, batches the
 ⸻
 
 ✅ What does logsink do?
-- 🧠 Detects log record boundaries using regex (e.g., by timestamp)
-- 📄 Converts raw log lines into OTEL LogRecord messages
-- 🧵 Buffers and batches logs with configurable frequency and batch size
-- 📤 Compresses and sends batches over OTLP/HTTP using GZIP
-- 🪪 Attaches resource-level attributes like service.name, env, etc.
-- 🔁 Supports file checkpointing to resume partial processing after restart
+- Tails plain-text log files using RandomAccessFile, resuming from the last checkpoint.
+- Groups multi line entries (e.g., stack traces) using a customizable regex to detect record boundaries.
+- Extracts log severity (INFO, WARN, ERROR) from content and maps to OTEL SeverityNumber (to filter by log level in Cardinal UI).
+- Converts raw text into OTEL LogRecords, including full body and timestamp. 
+- Attaches resource-level attributes like service.name or env via a user-defined function. Goal is for you to be able to filter by app in CardinalUI)
+- Batched Processing, flushing either on batch size or elapsed time.
+- Compresses and sends logs over OTLP/HTTP using GZIP and protobuf.
+- Persists checkpoints per file, ensuring no logs are lost or reprocessed on restart.
+- Restores in-flight files on startup from a JSON file (in_progress_files.json).
+- Handles file deletion gracefully, cleaning up checkpoint and state if needed.
+- Runs processing in parallel with a cached thread pool (with num threads = available processors).
+- Includes a shutdown hook to stop threads and flush buffers cleanly.
 
 
 ## ✨ Quick Start
