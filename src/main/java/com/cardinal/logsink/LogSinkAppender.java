@@ -158,6 +158,7 @@ public final class LogSinkAppender extends AbstractAppender {
 
         LogRecord protoRecord = LogRecord.newBuilder()
                 .setTimeUnixNano(timeUnixNanos)
+                .setObservedTimeUnixNano(timeUnixNanos)
                 .setSeverityNumber(sev)
                 .setSeverityText(event.getLevel().name())
                 .setBody(AnyValue.newBuilder().setStringValue(msg).build())

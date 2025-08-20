@@ -98,6 +98,7 @@ import io.opentelemetry.proto.logs.v1.SeverityNumber;
 
 LogRecord record = LogRecord.newBuilder()
     .setTimeUnixNano(System.currentTimeMillis() * 1_000_000) // current time in nanoseconds
+    .setObservedTimeUnixNano(System.currentTimeMillis() * 1_000_000)
     .setSeverityNumberValue(SeverityNumber.SEVERITY_NUMBER_INFO.getNumber())
     .setSeverityText("INFO")
     .setBody(AnyValue.newBuilder().setStringValue("User login successful").build())
