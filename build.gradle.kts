@@ -6,13 +6,13 @@ plugins {
 }
 
 group = "io.cardinalhq"
-version = "1.0.28" // bump
+version = "1.0.29" // bump
 
 repositories { mavenCentral() }
 
 // --- versions you want to embed/shade ---
-val otelProto = "1.7.0-alpha"
-val protobuf  = "4.31.0"
+val otelProto = "1.5.0-alpha"
+val protobuf  = "4.28.3"
 
 // Create a dedicated "shade" configuration and make it available for compilation only
 configurations {
@@ -27,8 +27,8 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl")
 
-    implementation("io.opentelemetry:opentelemetry-sdk:1.53.0")
-    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.53.0")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.49.0")
+    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.49.0")
 
     // deps to embed & relocate (won't appear in published POM)
     add("shade", "io.opentelemetry.proto:opentelemetry-proto:$otelProto")
