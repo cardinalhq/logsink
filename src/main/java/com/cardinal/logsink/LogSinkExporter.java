@@ -1,9 +1,12 @@
 package com.cardinal.logsink;
 
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.logs.v1.ScopeLogs;
+import io.opentelemetry.proto.resource.v1.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,8 +16,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.GZIPOutputStream;
+import java.util.Map;import java.util.zip.GZIPOutputStream;
 
 public class LogSinkExporter {
     private static final Logger logger = LoggerFactory.getLogger(LogSinkExporter.class);
