@@ -114,15 +114,15 @@ LogRecord record = LogRecord.newBuilder()
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN" packages="io.opentelemetry.instrumentation.log4j.appender.v2_17">
+<Configuration status="WARN">
     <Appenders>
         <!-- Send logs to your OTLP HTTP endpoint (OTel Collector on 4318) -->
         <LogSink name="LogSink"
-                otlpEndpoint="http://localhost:4318/v1/logs"
-                appName="log4j-example"
-                envKeys="POD_NAME,NAMESPACE,CLUSTER_NAME"
-                queueSize="1000"
-                maxBatchSize="100"/>
+                 otlpEndpoint="http://localhost:4318/v1/logs"
+                 appName="log4j-example"
+                 envKeys="POD_NAME,NAMESPACE,CLUSTER_NAME"
+                 queueSize="1000"
+                 maxBatchSize="100"/>
         <!-- Also print to stdout -->
         <Console name="ConsoleAppender" target="SYSTEM_OUT" follow="true">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
