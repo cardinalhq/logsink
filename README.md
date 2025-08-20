@@ -1,89 +1,149 @@
-## 🪵 logsink
+# 🪵 logsink
 
-logsink is a lightweight Java library for exporting OpenTelemetry logs via OTLP/HTTP using protobuf.
-It reads from plain log files, groups lines into structured records, batches them efficiently, and sends them to an OTEL-compatible collector.
+**logsink** is a Java library for sending OpenTelemetry-compatible logs over OTLP/HTTP in protobuf format. It provides a production-ready batching and export mechanism that allows applications to log structured data with custom resource-level attributes, sent efficiently to an OpenTelemetry Collector.
 
-⸻
+---
 
-✅ What does logsink do?
-- Tails plain-text log files using RandomAccessFile, resuming from the last checkpoint.
-- Groups multi line entries (e.g., stack traces) using a customizable regex to detect record boundaries.
-- Extracts log severity (INFO, WARN, ERROR) from content and maps to OTEL SeverityNumber (to filter by log level in Cardinal UI).
-- Converts raw text into OTEL LogRecords, including full body and timestamp. 
-- Attaches resource-level attributes like service.name or env via a user-defined function. This is to allow for filtering by app in CardinalUI)
-- Batched Processing, flushing either on batch size or elapsed time.
-- Compresses and sends logs over OTLP/HTTP using GZIP and protobuf.
-- Persists checkpoints per file, ensuring no logs are lost or reprocessed on restart.
-- Restores in-flight files on startup from a JSON file (in_progress_files.json).
-- Handles file deletion gracefully, cleaning up checkpoint and state if needed.
-- Runs processing in parallel with a cached thread pool (with num threads = available processors).
-- Includes a shutdown hook to stop threads and flush buffers cleanly.
+## 📖 What does logsink do?
 
+logsink provides a structured way to export logs in the OpenTelemetry Protocol (OTLP) format. It converts raw `LogRecord` entries into `ExportLogsServiceRequest` payloads and sends them over HTTP with gzip compression. It handles batching by count and payload size, and supports periodic background flushing to avoid partial batch loss.
 
-## ✨ Quick Start
+Logsink is suitable for use cases where you:
+- Want fine-grained control over how OTEL logs are exported
+- Need to add metadata like `service.name`, `env`, `region` at the resource level
+- Are building telemetry pipelines that send logs downstream to OTEL-compatible backends
 
-`Gradle`:
+---
+
+## 📦 OTEL Data Model 
+
+```aiignore
+ExportLogsServiceRequest
+└── ResourceLogs         ← One per unique resource (e.g. a service or host)
+    └── ScopeLogs        ← One per instrumentation library or logical log scope
+        └── LogRecord    ← Individual log entry (timestamp, message, severity, etc.)
+```
+
+## 📦 Class Overview
+
+### 🔧 `LogSinkConfig`
+
+> Holds configuration needed to construct and operate the logsink pipeline.
+
 ```java
-dependencies {
-    implementation 'io.cardinalhq:logsink:1.0.25'
+public class LogSinkConfig {
+    String otlpEndpoint;     // URL of the OTLP HTTP collector (e.g. http://localhost:4318/v1/logs)
+    String apiKey;           // API key sent as an HTTP header
+    int maxBatchSize;        // Flush when number of logs reaches this
+    int maxPayloadBytes;     // Flush when raw (uncompressed) size exceeds this
 }
 ```
 
-`Maven`: 
+### 🔧 `LogSinkExporter`
+
+Responsible for sending logs over the wire.
+
+	•	Builds a protobuf ExportLogsServiceRequest
+	•	Adds resource-level attributes (e.g. service.name, env)
+	•	Compresses with GZIP
+	•	Sends to the OTLP endpoint via HttpClient
+
+
 ```java
-<dependency>
-  <groupId>io.cardinalhq</groupId>
-  <artifactId>logsink</artifactId>
-  <version>1.0.25</version>
-</dependency>
+public void sendBatch(String appName, List<LogRecord> records, String... resourceTags)
 ```
 
-### Example Usage
+### 🔧 `LogsinkBatcher`
+
+Buffers log records and triggers sendBatch() based on configured thresholds.
+
+	•	Uses LinkedBlockingQueue<LogRecord> internally
+	•	Flushes when batch size or payload size limit is hit
+	•	Also flushes every 5 seconds (scheduled task)
+	•	Drains and exports logs in a background worker thread
+
 ```java
-LogSinkConfig config = LogSinkConfig.builder()
-    .setOtlpEndpoint("http://localhost:4318/v1/logs") // OTLP-compatible collector
-    .setApiKey("your-api-key")                        // Optional: x-cardinalhq-api-key
-    .setCheckpointPath(Paths.get("./checkpoints"))    // Persistent checkpoint directory
-    .setMaxBatchSize(100)                             // Max logs per batch
-    .setPublishFrequency(5000)                        // Max wait (ms) before flushing batch
-    .setAttributesDeriver(filePath -> Map.of("service.name", "auth-service", "env", "prod")) // Derive attributes from file path
-    .setRecordStartPattern(Pattern.compile("^\\d{4}-\\d{2}-\\d{2}")) // Custom record boundary
+public void add(LogRecord record)
+public void flush()
+public void shutdown()
+```
+
+🪵 Logsink
+
+The public-facing class you use to log data.
+
+	•	Owns a LogsinkBatcher and delegates to it
+	•	Designed to be the primary entrypoint for developers
+
+```java
+LogSink logSink = new LogSink(config, "my-service", "env", "prod");
+logSink.log(logRecord);
+logSink.flush();
+logSink.shutdown();
+```
+
+### Using the convenience log method on the `LogSink` class which would convert the string message to a `LogRecord` for you.
+
+```java
+public void log(long timestamp, String message, Level level, String... tags) // tags here are structured attributes you attach at the logRecord level. 
+```
+
+### Instantiating the raw LogRecord
+
+```java
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.logs.v1.SeverityNumber;
+
+LogRecord record = LogRecord.newBuilder()
+    .setTimeUnixNano(System.currentTimeMillis() * 1_000_000) // current time in nanoseconds
+    .setSeverityNumberValue(SeverityNumber.SEVERITY_NUMBER_INFO.getNumber())
+    .setSeverityText("INFO")
+    .setBody(AnyValue.newBuilder().setStringValue("User login successful").build())
+    .addAttributes(KeyValue.newBuilder()
+        .setKey("user.id")
+        .setValue(AnyValue.newBuilder().setStringValue("12345").build())
+        .build())
     .build();
 
-LogSinkConsumer consumer = new LogSinkConsumer(config);
-
-// Enqueue a file (this will be tailed, asynchronously processed and sent). An enqueued file, is written to the checkpoint directory, so that it can be resumed later if the process is restarted.
-// In the case of a race condition, where the file at this path is already deleted, we will throw a `DeletedFileException`.
-consumer.enqueue("/var/log/app/auth.log");
-
-// Graceful shutdown (flush and stop all threads)
-consumer.shutdown();
 ```
 
-## ⚙️ Configuration Settings
 
-When building a `LogSinkConfig`, the following settings let you customize log parsing, batching, and metadata enrichment:
+### Log4jAppender Configuration
 
-| Setting              | Type                                  | Default Value                                                 | Description |
-|----------------------|---------------------------------------|----------------------------------------------------------------|-------------|
-| `recordStartPattern` | `Pattern`                             | `^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}`               | Regular expression used to detect the **start of a new log record**. Crucial for grouping stack traces and multi-line logs into a **single** structured log. Most Java logs begin with a timestamp, which this default matches. |
-| `maxBatchSize`       | `int`                                 | `100`                                                         | Maximum number of log records to batch together before sending to the OTLP endpoint. Helps avoid oversized payloads. |
-| `publishFrequency`   | `int` (milliseconds)                  | `5000`                                                        | Maximum time (in milliseconds) to wait before flushing a batch, even if it's not full. |
-| `attributesDeriver`  | `Function<String, Map<String, String>>` | `path -> Map.of("service.name", "logsink")`                   | Optional but **recommended**. Function to derive **resource-level OTEL attributes** (e.g. `service.name`, `env`) from the log file path. For example, from `/var/gatekeeper/app.log` → `"service.name" = "gatekeeper"`. These attributes help group logs by service in Cardinal's UI. |
-
-### 💡 Example: attributesDeriver usage
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" packages="io.opentelemetry.instrumentation.log4j.appender.v2_17">
+    <Appenders>
+        <!-- Send logs to your OTLP HTTP endpoint (OTel Collector on 4318) -->
+        <LogSink name="LogSink"
+                otlpEndpoint="http://localhost:4318/v1/logs"
+                appName="log4j-example"
+                envKeys="POD_NAME,NAMESPACE,CLUSTER_NAME"
+                queueSize="1000"
+                maxBatchSize="100"/>
+        <!-- Also print to stdout -->
+        <Console name="ConsoleAppender" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="LogSink" />
+            <AppenderRef ref="ConsoleAppender" />
+        </Root>
+    </Loggers>
+</Configuration>
+```
 
 ```java
-.setAttributesDeriver(path -> {
-    String[] parts = path.split("/");
-    return Map.of("service.name", parts.length > 2 ? parts[2] : "logsink");
-})
+dependencies {
+    // Log4j
+    implementation(platform("org.apache.logging.log4j:log4j-bom:2.25.1"))
+    implementation("org.apache.logging.log4j:log4j-api")
+    implementation("org.apache.logging.log4j:log4j-core")
+
+    implementation("io.cardinalhq:logsink:1.0.27")
+}
 ```
-
-### 💡 Notes
-
-- The `recordStartPattern` is crucial for correctly grouping log lines into structured records. If your logs don't start with a timestamp, you can adjust this regex accordingly.
-- The `attributesDeriver` function is optional but highly recommended to enrich logs with meaningful metadata. It can derive attributes based on the file path, environment variables, or any other logic you need.
-- The `maxBatchSize` and `publishFrequency` settings help balance performance and resource usage. Adjust them based on your log volume and processing requirements.
-
-
