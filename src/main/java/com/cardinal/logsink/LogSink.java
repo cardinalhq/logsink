@@ -45,6 +45,7 @@ public class LogSink {
 
         LogRecord record = LogRecord.newBuilder()
                 .setTimeUnixNano(timestamp)
+                .setObservedTimeUnixNano(timestamp)
                 .setSeverityNumberValue(severityNumber.getNumber())
                 .setSeverityText(level.getName())
                 .setBody(AnyValue.newBuilder().setStringValue(message).build())
