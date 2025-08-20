@@ -1,59 +1,67 @@
 plugins {
-    id("java")
-    id("maven-publish")
-    id("signing")
+    `java-library`
+    `maven-publish`
+    signing
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "io.cardinalhq"
-version = "1.0.27"
+version = "1.0.28" // bump
 
-repositories {
-    mavenCentral()
+repositories { mavenCentral() }
+
+// --- versions you want to embed/shade ---
+val otelProto = "1.7.0-alpha"
+val protobuf  = "4.31.0"
+
+// Create a dedicated "shade" configuration and make it available for compilation only
+configurations {
+    create("shade")
+    compileOnly { extendsFrom(getByName("shade")) }
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-    testImplementation("org.mockito:mockito-core:5.11.0")
-
-
+    // your normal deps remain visible to consumers
     implementation(platform("org.apache.logging.log4j:log4j-bom:2.25.1"))
-
-    val log4j = "2.25.1"
-    implementation(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
-    annotationProcessor(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
-
     implementation("org.apache.logging.log4j:log4j-api")
     implementation("org.apache.logging.log4j:log4j-core")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl")
 
-    // versionless is fine now because the BOM also covers annotationProcessor:
-    annotationProcessor("org.apache.logging.log4j:log4j-core")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.53.0")
+    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.53.0")
 
-    // SLF4J API (you log against this interface)
-    implementation("org.slf4j:slf4j-api:2.0.13")
+    // deps to embed & relocate (won't appear in published POM)
+    add("shade", "io.opentelemetry.proto:opentelemetry-proto:$otelProto")
+    add("shade", "com.google.protobuf:protobuf-java:$protobuf")
 
-    // Bridge: SLF4J -> Log4j2 (implementation of LoggerFactory)
-    runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.22.1")
-
-    // Log4j2 core (does the actual logging)
-    runtimeOnly("org.apache.logging.log4j:log4j-core:2.22.1")
-
-    implementation("io.opentelemetry:opentelemetry-sdk:1.49.0")
-    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.49.0")
-    implementation("io.opentelemetry.proto:opentelemetry-proto:1.5.0-alpha")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
 }
 
-// Generate -sources.jar and -javadoc.jar
 java {
     withSourcesJar()
     withJavadocJar()
 }
 
+tasks.test { useJUnitPlatform() }
+
+// Build a single shaded jar that replaces the normal jar
+tasks.shadowJar {
+    // only embed the "shade" configuration
+    configurations = listOf(project.configurations.getByName("shade"))
+    archiveClassifier.set("") // publish this as the main jar
+    relocate("com.google.protobuf", "io.cardinalhq.shaded.com.google.protobuf")
+    relocate("io.opentelemetry.proto", "io.cardinalhq.shaded.io.opentelemetry.proto")
+}
+tasks.jar { enabled = false } // ensure only the shaded jar is published
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
+            // publish the shaded jar (already classifier = "")
+            artifact(tasks.shadowJar)
+
             artifactId = "logsink"
             pom {
                 name.set("logsink")
@@ -84,7 +92,6 @@ publishing {
     }
 }
 
-// Optional: sign only when keys are present (Central release)
 signing {
     val key = System.getenv("GPG_PRIVATE_KEY")
     val pass = System.getenv("GPG_PASSPHRASE")
@@ -92,8 +99,4 @@ signing {
         useInMemoryPgpKeys(key, pass)
         sign(publishing.publications["mavenJava"])
     }
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
