@@ -1,50 +1,34 @@
 plugins {
-    id("java")
+    id("java-library")
     id("maven-publish")
     id("signing")
 }
 
 group = "io.cardinalhq"
-version = "1.0.40"
+version = "1.0.42"
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 configurations.all {
     resolutionStrategy.force("com.google.protobuf:protobuf-java:3.25.5")
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-    testImplementation("org.mockito:mockito-core:5.11.0")
-
-
-    implementation(platform("org.apache.logging.log4j:log4j-bom:2.25.1"))
-
+    // Align all Log4j modules; don't mix versions
     val log4j = "2.25.1"
-    implementation(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
+    compileOnly(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
     annotationProcessor(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
 
-    implementation("org.apache.logging.log4j:log4j-api")
-    implementation("org.apache.logging.log4j:log4j-core")
-    implementation("org.apache.logging.log4j:log4j-slf4j2-impl")
-
-    // versionless is fine now because the BOM also covers annotationProcessor:
+    // Log4j APIs needed to compile your appender
+    compileOnly("org.apache.logging.log4j:log4j-api")
+    compileOnly("org.apache.logging.log4j:log4j-core")
+    // Generate plugin cache (Log4j2Plugins.dat)
     annotationProcessor("org.apache.logging.log4j:log4j-core")
 
-    // SLF4J API (you log against this interface)
-    implementation("org.slf4j:slf4j-api:2.0.13")
+    // If you still use SLF4J in non-appender classes, keep it compileOnly
+    compileOnly("org.slf4j:slf4j-api:2.0.13")
 
-    // Bridge: SLF4J -> Log4j2 (implementation of LoggerFactory)
-    runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.22.1")
-
-    // Log4j2 core (does the actual logging)
-    runtimeOnly("org.apache.logging.log4j:log4j-core:2.22.1")
-
-    implementation("io.opentelemetry:opentelemetry-sdk:1.49.0")
-    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.49.0")
+    // OTLP protos only (you don't need the OTel SDK here)
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.2-alpha")
 }
 
