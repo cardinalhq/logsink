@@ -4,6 +4,7 @@ import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.SeverityNumber;
+import org.apache.logging.log4j.status.StatusLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ import java.util.logging.Level;
 
 
 public class LogSink {
-    private static final Logger logger = LoggerFactory.getLogger(LogSink.class);
+    private static final StatusLogger logger = StatusLogger.getLogger();
 
     private final LogSinkBatcher batcher;
 
