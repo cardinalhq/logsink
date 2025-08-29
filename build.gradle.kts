@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.cardinalhq"
-version = "1.0.42"
+version = "1.0.43"
 
 repositories { mavenCentral() }
 
@@ -19,10 +19,8 @@ dependencies {
     compileOnly(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
     annotationProcessor(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
 
-    // Log4j APIs needed to compile your appender
     compileOnly("org.apache.logging.log4j:log4j-api")
     compileOnly("org.apache.logging.log4j:log4j-core")
-    // Generate plugin cache (Log4j2Plugins.dat)
     annotationProcessor("org.apache.logging.log4j:log4j-core")
 
     // If you still use SLF4J in non-appender classes, keep it compileOnly

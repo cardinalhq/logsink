@@ -1,12 +1,10 @@
-package com.cardinal.logsink;
+package io.cardinalhq.logsink;
 
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.SeverityNumber;
 import org.apache.logging.log4j.status.StatusLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;

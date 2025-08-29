@@ -1,4 +1,4 @@
-package com.cardinal.logsink;
+package io.cardinalhq.logsink;
 
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
