@@ -2,7 +2,7 @@
 
 logsink is a tiny, production-ready Java library for shipping OpenTelemetry logs (OTLP/HTTP + protobuf + gzip). It includes:
 - A Log4j2 Appender (LogSinkAppender) so you can drop it into existing apps.
-- A batched exporter (LogSinkExporter) that builds OTLP requests and sends over HTTP.
+- A batched exporter (LogSinkExporter) that builds OTLP requests and sends over gzipped proto over HTTP.
 - A high-throughput batcher (LogSinkBatcher) built on the LMAX Disruptor ring buffer to minimize allocations and GC.
 
 ```java
