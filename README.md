@@ -5,19 +5,17 @@ logsink is a tiny, production-ready Java library for shipping OpenTelemetry logs
 - A batched exporter (LogSinkExporter) that builds OTLP requests and sends over HTTP.
 - A high-throughput batcher (LogSinkBatcher) built on the LMAX Disruptor ring buffer to minimize allocations and GC.
 
-  ```java
+```java
 dependencies {
     implementation("io.cardinalhq:logsink:1.0.51")
 }
 ```
-
 
 ## What does it do?
 - Converts LogRecord → ExportLogsServiceRequest (OTLP) with your resource attributes (e.g., service.name, environment, cluster).
 - Batches logs by count and flushes periodically to keep latency low even when traffic is sparse.
 - Compresses payloads with gzip and sends them with Java 11+ HttpClient.
 - Plugs into Log4j2 via <LogSink .../> appender config, or you can use the LogSink class directly.
-
 
 🧱 Key Components
 
