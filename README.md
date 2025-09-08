@@ -12,6 +12,11 @@ logsink is a tiny, production-ready Java library for shipping OpenTelemetry logs
 - Compresses payloads with gzip and sends them with Java 11+ HttpClient.
 - Plugs into Log4j2 via <LogSink .../> appender config, or you can use the LogSink class directly.
 
+```java
+dependencies {
+    implementation("io.cardinalhq:logsink:1.0.51")
+}
+```
 
 🧱 Key Components
 
