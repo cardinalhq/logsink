@@ -18,6 +18,7 @@ import org.apache.logging.log4j.util.ReadOnlyStringMap;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Plugin(
@@ -87,9 +88,7 @@ public final class LogSinkAppender extends AbstractAppender {
             return null;
         }
         // Fall back to OTEL_SERVICE_NAME or a sane default
-        String finalAppName = (appName != null && !appName.isBlank())
-                ? appName
-                : System.getenv().getOrDefault("OTEL_SERVICE_NAME", "unknown_service:log4j2");
+        String finalAppName = resolveAppName(appName);
 
         if (layout == null) {
             layout = PatternLayout.newBuilder().withPattern("%m%n").build();
@@ -101,6 +100,45 @@ public final class LogSinkAppender extends AbstractAppender {
                 envKeysCsv, envPrefixCsv, envExcludePattern,
                 queueSize, maxBatchSize
         );
+    }
+
+    // Add near the top of the class:
+    private static final Pattern ENV_REF =
+            Pattern.compile("^\\$\\{env[:.-]([A-Za-z_][A-Za-z0-9_]*)(?::-(.*))?}$");
+
+    // Trim-to-null helper
+    private static String ttn(String s) {
+        if (s == null) return null;
+        String x = s.trim();
+        return x.isEmpty() ? null : x;
+    }
+
+    /**
+     * Resolves the app name with the following precedence:
+     * 1) Explicit appName (with ${env:VAR} / ${env.VAR} / ${env-VAR} / ${env:VAR:-default} support)
+     * 2) ENV OTEL_SERVICE_NAME
+     * 3) SYS PROP otel.service.name
+     * 4) "unknown_service:log4j2"
+     */
+    private static String resolveAppName(String appNameRaw) {
+        String candidate = ttn(appNameRaw);
+
+        if (candidate != null) {
+            Matcher m = ENV_REF.matcher(candidate);
+            if (m.matches()) {
+                String var = m.group(1);
+                String def = m.group(2); // may be null
+                String val = ttn(System.getenv(var));
+                candidate = (val != null) ? val : (ttn(def) != null ? def : null);
+            }
+        }
+
+        // If still empty, try environment/system properties; then default.
+        if (candidate == null) candidate = ttn(System.getenv("OTEL_SERVICE_NAME"));
+        if (candidate == null) candidate = ttn(System.getProperty("otel.service.name"));
+        if (candidate == null) candidate = "unknown_service:log4j2";
+
+        return candidate;
     }
 
     @Override
