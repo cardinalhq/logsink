@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "io.cardinalhq"
-version = "1.0.54"
+version = "1.0.56"
 
 repositories {
     mavenCentral()
@@ -36,8 +36,8 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
     withJavadocJar()
 }

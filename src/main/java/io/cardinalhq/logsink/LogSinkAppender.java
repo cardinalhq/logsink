@@ -1,6 +1,6 @@
 package io.cardinalhq.logsink;
 
-import io.cardinalhq.logsink.bridge.GcOtelBridge;
+import io.cardinalhq.logsink.bridge.GcJfrOtelBridge;
 import io.cardinalhq.logsink.bridge.StdStreamsOtelBridge;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -47,7 +47,7 @@ public final class LogSinkAppender extends AbstractAppender {
 
     // ---- Internal ----
     private volatile LogSink sink;
-    private GcOtelBridge gcBridge;
+    private GcJfrOtelBridge jfrBridge;
 
     // Ensure stdout/stderr bridge is installed once per JVM even if Log4j reconfigures.
     private static final AtomicBoolean STD_BRIDGE_INSTALLED = new AtomicBoolean(false);
@@ -186,9 +186,9 @@ public final class LogSinkAppender extends AbstractAppender {
 
         if (enableGc) {
             try {
-                this.gcBridge = GcOtelBridge.start(this.sink);
+                this.jfrBridge = GcJfrOtelBridge.start(this.sink);
             } catch (Throwable t) {
-                this.gcBridge = null;
+                this.jfrBridge = null;
             }
         }
     }
@@ -243,9 +243,9 @@ public final class LogSinkAppender extends AbstractAppender {
     public boolean stop(long timeout, TimeUnit timeUnit) {
         // Tear down GC bridge (stdout/stderr bridge stays for JVM lifetime)
         try {
-            if (gcBridge != null) {
-                gcBridge.close();
-                gcBridge = null;
+            if (jfrBridge != null) {
+                jfrBridge.close();
+                jfrBridge = null;
             }
         } catch (Throwable ignore) { /* avoid recursion */ }
 
