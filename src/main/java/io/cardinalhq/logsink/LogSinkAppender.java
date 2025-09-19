@@ -188,7 +188,6 @@ public final class LogSinkAppender extends AbstractAppender {
             try {
                 this.gcBridge = GcOtelBridge.start(this.sink);
             } catch (Throwable t) {
-                // LOGGER.debug("GC bridge installation failed: {}", t.toString()); // optional
                 this.gcBridge = null;
             }
         }
