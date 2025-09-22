@@ -2,11 +2,14 @@ package io.cardinalhq.logsink.bridge;
 
 import io.cardinalhq.logsink.LogSink;
 import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingStream;
 
 import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class GcJfrOtelBridge implements AutoCloseable {
@@ -85,14 +88,25 @@ public final class GcJfrOtelBridge implements AutoCloseable {
         double upSec = (e.getEndTime().toEpochMilli() - jvmStartMs) / 1000.0;
         String line = String.format("[%.3fs][info][%s] %s", upSec, tags, body);
 
+        List<KeyValue> attrs = new ArrayList<>(10);
+        attrs.add(kv("stream", "jvm.gc"));
+
         long tsNanos = e.getEndTime().toEpochMilli() * 1_000_000L;
         LogRecord rec = LogRecord.newBuilder()
                 .setTimeUnixNano(tsNanos)
                 .setObservedTimeUnixNano(tsNanos)
                 .setSeverityText("INFO")
+                .addAllAttributes(attrs)
                 .setBody(AnyValue.newBuilder().setStringValue(line).build())
                 .build();
         sink.log(rec);
+    }
+
+    private static KeyValue kv(String k, String v) {
+        return KeyValue.newBuilder()
+                .setKey(k)
+                .setValue(AnyValue.newBuilder().setStringValue(v == null ? "" : v).build())
+                .build();
     }
 
     private static String tag(String t) {
