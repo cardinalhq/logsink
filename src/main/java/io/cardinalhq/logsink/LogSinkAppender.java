@@ -142,14 +142,6 @@ public final class LogSinkAppender extends AbstractAppender {
         attrs.add(kv("log4j.thread", safe(event.getThreadName())));
         attrs.add(kv("log4j.level", event.getLevel().name()));
 
-        ReadOnlyStringMap mdc = event.getContextData();
-        if (mdc != null) {
-            mdc.forEach((k, v) -> {
-                if (k != null && v != null) {
-                    attrs.add(kv("mdc." + k, String.valueOf(v)));
-                }
-            });
-        }
 
         Throwable thrown = event.getThrown();
         if (thrown != null) {
