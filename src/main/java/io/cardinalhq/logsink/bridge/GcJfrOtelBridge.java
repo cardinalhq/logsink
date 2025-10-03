@@ -13,25 +13,27 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class GcJfrOtelBridge implements AutoCloseable {
+    private final org.apache.logging.log4j.Logger logger;
     private final LogSink sink;
     private final long jvmStartMs = ManagementFactory.getRuntimeMXBean().getStartTime();
     private final AtomicBoolean started = new AtomicBoolean(false);
     private RecordingStream rs;
     private Thread thread;
 
-    public GcJfrOtelBridge(LogSink sink) {
+    public GcJfrOtelBridge(org.apache.logging.log4j.Logger logger, LogSink sink) {
+        this.logger = logger;
         this.sink = sink;
     }
 
-    public static GcJfrOtelBridge start(LogSink sink) {
-        GcJfrOtelBridge b = new GcJfrOtelBridge(sink);
+    public static GcJfrOtelBridge start(org.apache.logging.log4j.Logger logger, LogSink sink) {
+        GcJfrOtelBridge b = new GcJfrOtelBridge(logger, sink);
         b.start();
         return b;
     }
 
     public void start() {
         if (!started.compareAndSet(false, true)) return;
-
+        logger.info("Starting GcJfrOtelBridge to OpenTelemetry bridge");
         rs = new RecordingStream();
 
         rs.enable("jdk.GarbageCollection");

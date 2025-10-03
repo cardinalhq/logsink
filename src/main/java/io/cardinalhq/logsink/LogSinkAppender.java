@@ -177,6 +177,7 @@ public final class LogSinkAppender extends AbstractAppender {
         // Optional bridges
         if (enableStdStreams && STD_BRIDGE_INSTALLED.compareAndSet(false, true)) {
             try {
+                LOGGER.info("Starting Stdout/Stderr to OpenTelemetry bridge");
                 StdStreamsOtelBridge.install(this.sink);
             } catch (Throwable t) {
                 // Avoid recursive logging here; StatusLogger is ok but keep it quiet
@@ -186,7 +187,7 @@ public final class LogSinkAppender extends AbstractAppender {
 
         if (enableGc) {
             try {
-                this.jfrBridge = GcJfrOtelBridge.start(this.sink);
+                this.jfrBridge = GcJfrOtelBridge.start(LOGGER, this.sink);
             } catch (Throwable t) {
                 this.jfrBridge = null;
             }
