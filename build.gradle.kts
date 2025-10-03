@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "io.cardinalhq"
-version = "1.0.59"
+version = "1.0.60"
 
 repositories {
     mavenCentral()
