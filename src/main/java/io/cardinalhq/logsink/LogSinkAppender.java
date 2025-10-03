@@ -21,8 +21,6 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Plugin(
         name = "LogSink", // <LogSink .../> in log4j2.xml
@@ -32,24 +30,22 @@ import java.util.regex.Pattern;
 )
 public final class LogSinkAppender extends AbstractAppender {
 
-    // ---- Configurable plugin attributes ----
-    private final String otlpEndpoint;      // http://collector:4318/v1/logs
-    private final String appName;           // service.name
-    private final String envKeysCsv;        // "POD_NAME,NAMESPACE,CLUSTER_NAME"
-    private final String envPrefixCsv;      // "OTEL_,CARDINAL_"
-    private final String envExcludePattern; // regex to skip secrets
+    // ---- Context keys provided by ContextDataProvider / MDC ----
+    private static final String CTX_ENDPOINT  = "OTEL_EXPORTER_OTLP_ENDPOINT"; // e.g. https://otel:4318/v1/logs
+    private static final String CTX_SERVICE   = "OTEL_SERVICE_NAME";           // e.g. payments
+    private static final String CTX_RES_ATTRS = "OTEL_RESOURCE_ATTRIBUTES";    // e.g. service.namespace=checkout,team=core
+
+    // ---- Minimal configuration knobs ----
     private final int queueSize;
     private final int maxBatchSize;
-
-    // New: feature toggles
     private final boolean enableGc;
     private final boolean enableStdStreams;
 
     // ---- Internal ----
-    private volatile LogSink sink;
+    private volatile LogSink sink;                 // created lazily on first event with endpoint
+    private volatile boolean bridgesInstalled;     // ensure bridges only once
     private GcJfrOtelBridge jfrBridge;
 
-    // Ensure stdout/stderr bridge is installed once per JVM even if Log4j reconfigures.
     private static final AtomicBoolean STD_BRIDGE_INSTALLED = new AtomicBoolean(false);
 
     private LogSinkAppender(
@@ -57,24 +53,12 @@ public final class LogSinkAppender extends AbstractAppender {
             Filter filter,
             Layout<? extends Serializable> layout,
             boolean ignoreExceptions,
-            String otlpEndpoint,
-            String appName,
-            String envKeysCsv,
-            String envPrefixCsv,
-            String envExcludePattern,
             int queueSize,
             int maxBatchSize,
             boolean enableGc,
             boolean enableStdStreams
     ) {
         super(name, filter, layout, ignoreExceptions, Property.EMPTY_ARRAY);
-        this.otlpEndpoint = otlpEndpoint;
-        this.appName = appName;
-        this.envKeysCsv = envKeysCsv;
-        this.envPrefixCsv = envPrefixCsv;
-        this.envExcludePattern = (envExcludePattern == null || envExcludePattern.isBlank())
-                ? "(?i).*(SECRET|TOKEN|PASSWORD|PWD|PRIVATE|CREDENTIAL|ACCESS_KEY|API_KEY).*"
-                : envExcludePattern;
         this.queueSize = queueSize > 0 ? queueSize : 1000;
         this.maxBatchSize = maxBatchSize > 0 ? maxBatchSize : 100;
         this.enableGc = enableGc;
@@ -84,18 +68,10 @@ public final class LogSinkAppender extends AbstractAppender {
     @PluginFactory
     public static LogSinkAppender createAppender(
             @PluginAttribute("name") String name,
-            @PluginAttribute("otlpEndpoint") String otlpEndpoint,
-            @PluginAttribute("appName") String appName,
-            @PluginAttribute("envKeys") String envKeysCsv,
-            @PluginAttribute("envPrefix") String envPrefixCsv,
-            @PluginAttribute("envExcludePattern") String envExcludePattern,
             @PluginAttribute(value = "queueSize", defaultInt = 1000) int queueSize,
             @PluginAttribute(value = "maxBatchSize", defaultInt = 100) int maxBatchSize,
-
-            // New flags
             @PluginAttribute(value = "enableGC", defaultBoolean = false) boolean enableGc,
             @PluginAttribute(value = "enableStdStreams", defaultBoolean = false) boolean enableStdStreams,
-
             @PluginElement("Filter") Filter filter,
             @PluginElement("Layout") Layout<? extends Serializable> layout
     ) {
@@ -103,111 +79,69 @@ public final class LogSinkAppender extends AbstractAppender {
             LOGGER.error("LogSinkAppender: 'name' is required");
             return null;
         }
-        if (otlpEndpoint == null || otlpEndpoint.isBlank()) {
-            LOGGER.error("LogSinkAppender: 'otlpEndpoint' is required");
-            return null;
-        }
-
-        String finalAppName = resolveAppName(appName);
         if (layout == null) {
             layout = PatternLayout.newBuilder().withPattern("%m%n").build();
         }
-
-        return new LogSinkAppender(
-                name, filter, layout, true,
-                otlpEndpoint, finalAppName,
-                envKeysCsv, envPrefixCsv, envExcludePattern,
-                queueSize, maxBatchSize,
-                enableGc, enableStdStreams
-        );
-    }
-
-    // -------- env helpers --------
-
-    private static final Pattern ENV_REF =
-            Pattern.compile("^\\$\\{env[:.-]([A-Za-z_][A-Za-z0-9_]*)(?::-(.*))?}$");
-
-    private static String ttn(String s) {
-        if (s == null) return null;
-        String x = s.trim();
-        return x.isEmpty() ? null : x;
-    }
-
-    /**
-     * appName precedence:
-     * 1) explicit (supports ${env:VAR} / ${env.VAR} / ${env-VAR} / ${env:VAR:-default})
-     * 2) ENV OTEL_SERVICE_NAME
-     * 3) SYS PROP otel.service.name
-     * 4) "unknown_service:log4j2"
-     */
-    private static String resolveAppName(String appNameRaw) {
-        String candidate = ttn(appNameRaw);
-        if (candidate != null) {
-            Matcher m = ENV_REF.matcher(candidate);
-            if (m.matches()) {
-                String var = m.group(1);
-                String def = m.group(2);
-                String val = ttn(System.getenv(var));
-                candidate = (val != null) ? val : (ttn(def) != null ? def : null);
-            }
-        }
-        if (candidate == null) candidate = ttn(System.getenv("OTEL_SERVICE_NAME"));
-        if (candidate == null) candidate = ttn(System.getProperty("otel.service.name"));
-        if (candidate == null) candidate = "unknown_service:log4j2";
-        return candidate;
+        return new LogSinkAppender(name, filter, layout, true, queueSize, maxBatchSize, enableGc, enableStdStreams);
     }
 
     @Override
     public void start() {
+        // No sink yet; we’ll build it on the first event that has an endpoint in context
         super.start();
-
-        // Build Resource once at initialization
-        Map<String, String> resMap = new LinkedHashMap<>(collectEnvAttributes(envKeysCsv, envPrefixCsv, envExcludePattern));
-
-        LogSinkConfig config = LogSinkConfig.builder()
-                .setOtlpEndpoint(otlpEndpoint)
-                .setAppName(appName)
-                .setQueueSize(queueSize)
-                .setMaxBatchSize(maxBatchSize)
-                .addResourceAttributes(resMap)
-                .build();
-
-        this.sink = new LogSink(config);
-
-        // Optional bridges
-        if (enableStdStreams && STD_BRIDGE_INSTALLED.compareAndSet(false, true)) {
-            try {
-                LOGGER.info("Starting Stdout/Stderr to OpenTelemetry bridge");
-                StdStreamsOtelBridge.install(this.sink);
-            } catch (Throwable t) {
-                // Avoid recursive logging here; StatusLogger is ok but keep it quiet
-                // LOGGER.debug("StdStreams bridge installation failed: {}", t.toString()); // optional
-            }
-        }
-
-        if (enableGc) {
-            try {
-                this.jfrBridge = GcJfrOtelBridge.start(LOGGER, this.sink);
-            } catch (Throwable t) {
-                this.jfrBridge = null;
-            }
-        }
     }
 
     @Override
     public void append(LogEvent event) {
-        if (sink == null || !isStarted()) return;
+        if (!isStarted()) return;
 
+        // 1) Pull config from context (ContextDataProvider + MDC)
+        ReadOnlyStringMap ctx = event.getContextData();
+        final String endpoint = trim(getCtx(ctx, CTX_ENDPOINT));
+        if (endpoint == null) {
+            // Endpoint not provided => LogSink disabled. Quietly skip.
+            return;
+        }
+
+        final String serviceName = orDefault(trim(getCtx(ctx, CTX_SERVICE)), "unknown_service:log4j2");
+        final String resStr      = trim(getCtx(ctx, CTX_RES_ATTRS));
+        final Map<String, String> resAttrs = parseOtelResourceAttributes(resStr);
+        resAttrs.putIfAbsent("service.name", serviceName);
+
+        // 2) Create sink once (no reconfiguration later)
+        if (sink == null) {
+            synchronized (this) {
+                if (sink == null) {
+                    LogSinkConfig.Builder b = LogSinkConfig.builder()
+                            .setOtlpEndpoint(endpoint)
+                            .setAppName(serviceName)
+                            .setQueueSize(queueSize)
+                            .setMaxBatchSize(maxBatchSize)
+                            .addResourceAttributes(resAttrs);
+
+                    this.sink = new LogSink(b.build());
+
+                    // Install bridges once we have a sink
+                    if (!bridgesInstalled) {
+                        installBridgesOnce();
+                        bridgesInstalled = true;
+                    }
+                }
+            }
+        }
+
+        if (sink == null) return; // should not happen, but be safe
+
+        // 3) Build and send the record (unchanged)
         long timeUnixNanos = event.getTimeMillis() * 1_000_000L;
-
         SeverityNumber sev = mapSeverity(event.getLevel());
 
         List<KeyValue> attrs = new ArrayList<>(8);
+        attrs.add(kv("stream", "app"));
         attrs.add(kv("log4j.logger", safe(event.getLoggerName())));
         attrs.add(kv("log4j.thread", safe(event.getThreadName())));
         attrs.add(kv("log4j.level", event.getLevel().name()));
 
-        // MDC
         ReadOnlyStringMap mdc = event.getContextData();
         if (mdc != null) {
             mdc.forEach((k, v) -> {
@@ -217,12 +151,11 @@ public final class LogSinkAppender extends AbstractAppender {
             });
         }
 
-        // Throwable (flatten)
-        Throwable t = event.getThrown();
-        if (t != null) {
-            attrs.add(kv("exception.type", t.getClass().getName()));
-            attrs.add(kv("exception.message", t.getMessage() == null ? "" : t.getMessage()));
-            attrs.add(kv("exception.stacktrace", stackToString(t)));
+        Throwable thrown = event.getThrown();
+        if (thrown != null) {
+            attrs.add(kv("exception.type", thrown.getClass().getName()));
+            attrs.add(kv("exception.message", thrown.getMessage() == null ? "" : thrown.getMessage()));
+            attrs.add(kv("exception.stacktrace", stackToString(thrown)));
         }
 
         String msg = (event.getMessage() == null) ? "" : event.getMessage().getFormattedMessage();
@@ -236,31 +169,64 @@ public final class LogSinkAppender extends AbstractAppender {
                 .addAllAttributes(attrs)
                 .build();
 
-        // Best-effort enqueue; drop if full.
         sink.log(protoRecord);
+    }
+
+    private void installBridgesOnce() {
+        if (enableStdStreams && STD_BRIDGE_INSTALLED.compareAndSet(false, true)) {
+            try { StdStreamsOtelBridge.install(this.sink); } catch (Throwable ignore) {}
+        }
+        if (enableGc && jfrBridge == null) {
+            try { this.jfrBridge = GcJfrOtelBridge.start(LOGGER, this.sink); } catch (Throwable t) { this.jfrBridge = null; }
+        }
     }
 
     @Override
     public boolean stop(long timeout, TimeUnit timeUnit) {
-        // Tear down GC bridge (stdout/stderr bridge stays for JVM lifetime)
         try {
-            if (jfrBridge != null) {
-                jfrBridge.close();
-                jfrBridge = null;
-            }
-        } catch (Throwable ignore) { /* avoid recursion */ }
-
+            if (jfrBridge != null) { jfrBridge.close(); jfrBridge = null; }
+        } catch (Throwable ignore) {}
         boolean res = super.stop(timeout, timeUnit);
         try {
             if (sink != null) {
                 sink.flush();
                 sink.shutdown();
             }
-        } catch (Throwable ignore) { /* avoid recursion */ }
+        } catch (Throwable ignore) {}
         return res;
     }
 
     // ---------- helpers ----------
+
+    private static String getCtx(ReadOnlyStringMap ctx, String key) {
+        if (ctx == null || key == null) return null;
+        Object v = ctx.getValue(key);
+        return v == null ? null : v.toString();
+    }
+
+    private static Map<String, String> parseOtelResourceAttributes(String s) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (s == null || s.isBlank()) return out;
+        for (String pair : s.split("\\s*,\\s*")) {
+            if (pair.isBlank()) continue;
+            int eq = pair.indexOf('=');
+            if (eq <= 0 || eq == pair.length() - 1) continue;
+            String k = pair.substring(0, eq).trim();
+            String v = pair.substring(eq + 1).trim();
+            if (!k.isEmpty()) out.put(k, v);
+        }
+        return out;
+    }
+
+    private static String trim(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static String orDefault(String s, String def) {
+        return (s == null || s.isEmpty()) ? def : s;
+    }
 
     private static SeverityNumber mapSeverity(Level level) {
         if (level == null) return SeverityNumber.SEVERITY_NUMBER_INFO;
@@ -297,43 +263,5 @@ public final class LogSinkAppender extends AbstractAppender {
             c = c.getCause();
         }
         return sb.toString();
-    }
-
-    private static Map<String, String> collectEnvAttributes(String keysCsv, String prefixesCsv, String excludeRegex) {
-        Map<String, String> out = new LinkedHashMap<>();
-        Set<String> keys = csvToSet(keysCsv);
-        Set<String> prefixes = csvToSet(prefixesCsv);
-        Pattern deny = (excludeRegex == null || excludeRegex.isBlank()) ? null : Pattern.compile(excludeRegex);
-
-        System.getenv().forEach((k, v) -> {
-            if (v == null) return;
-            boolean include = (!keys.isEmpty() && keys.contains(k));
-            if (!include && !prefixes.isEmpty()) {
-                for (String p : prefixes) {
-                    if (k.startsWith(p)) { include = true; break; }
-                }
-            }
-            if (!include) return;
-            if (deny != null && deny.matcher(k).matches()) return;
-
-            String attrKey = "env." + sanitizeKey(k);
-            out.put(attrKey, v);
-        });
-        return out;
-    }
-
-    private static Set<String> csvToSet(String csv) {
-        if (csv == null || csv.isBlank()) return Collections.emptySet();
-        Set<String> s = new LinkedHashSet<>();
-        for (String t : csv.split(",")) {
-            String x = t.trim();
-            if (!x.isEmpty()) s.add(x);
-        }
-        return s;
-    }
-
-    private static String sanitizeKey(String raw) {
-        String lower = raw.toLowerCase(Locale.ROOT);
-        return lower.replaceAll("[^a-z0-9_.-]", "_");
     }
 }
