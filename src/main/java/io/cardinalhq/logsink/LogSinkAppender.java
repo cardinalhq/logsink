@@ -95,44 +95,18 @@ public final class LogSinkAppender extends AbstractAppender {
     public void append(LogEvent event) {
         if (!isStarted()) return;
 
-        // 1) Pull config from context (ContextDataProvider + MDC)
-        ReadOnlyStringMap ctx = event.getContextData();
-        final String endpoint = trim(getCtx(ctx, CTX_ENDPOINT));
-        if (endpoint == null) {
-            // Endpoint not provided => LogSink disabled. Quietly skip.
-            return;
-        }
-
-        final String serviceName = orDefault(trim(getCtx(ctx, CTX_SERVICE)), "unknown_service:log4j2");
-        final String resStr      = trim(getCtx(ctx, CTX_RES_ATTRS));
-        final Map<String, String> resAttrs = parseOtelResourceAttributes(resStr);
-        resAttrs.putIfAbsent("service.name", serviceName);
-
-        // 2) Create sink once (no reconfiguration later)
-        if (sink == null) {
-            synchronized (this) {
-                if (sink == null) {
-                    LogSinkConfig.Builder b = LogSinkConfig.builder()
-                            .setOtlpEndpoint(endpoint)
-                            .setAppName(serviceName)
-                            .setQueueSize(queueSize)
-                            .setMaxBatchSize(maxBatchSize)
-                            .addResourceAttributes(resAttrs);
-
-                    this.sink = new LogSink(b.build());
-
-                    // Install bridges once we have a sink
-                    if (!bridgesInstalled) {
-                        installBridgesOnce();
-                        bridgesInstalled = true;
-                    }
-                }
+        // Once the sink exists, every event is sent unconditionally — no per-event
+        // context lookups, so app logs cannot silently stop while bridges keep running.
+        LogSink s = sink;
+        if (s == null) {
+            s = initSink(event);
+            if (s == null) {
+                // No endpoint configured anywhere yet => LogSink disabled. Quietly skip.
+                return;
             }
         }
 
-        if (sink == null) return; // should not happen, but be safe
-
-        // 3) Build and send the record (unchanged)
+        // Build and send the record (unchanged)
         long timeUnixNanos = event.getTimeMillis() * 1_000_000L;
         SeverityNumber sev = mapSeverity(event.getLevel());
 
@@ -161,7 +135,52 @@ public final class LogSinkAppender extends AbstractAppender {
                 .addAllAttributes(attrs)
                 .build();
 
-        sink.log(protoRecord);
+        s.log(protoRecord);
+    }
+
+    /**
+     * Creates the sink on the first event for which an endpoint can be resolved.
+     * Config is resolved once, preferring event context (ContextDataProvider/MDC)
+     * and falling back to system properties and environment variables, so a broken
+     * or non-propagating MDC cannot disable the appender.
+     */
+    private LogSink initSink(LogEvent event) {
+        synchronized (this) {
+            if (sink != null) return sink;
+
+            ReadOnlyStringMap ctx = event.getContextData();
+            final String endpoint = firstNonBlank(
+                    getCtx(ctx, CTX_ENDPOINT),
+                    System.getProperty("otel.exporter.otlp.endpoint"),
+                    System.getenv(CTX_ENDPOINT));
+            if (endpoint == null) return null;
+
+            final String serviceName = orDefault(firstNonBlank(
+                    getCtx(ctx, CTX_SERVICE),
+                    System.getProperty("otel.service.name"),
+                    System.getenv(CTX_SERVICE)), "unknown_service:log4j2");
+            final String resStr = firstNonBlank(
+                    getCtx(ctx, CTX_RES_ATTRS),
+                    System.getProperty("otel.resource.attributes"),
+                    System.getenv(CTX_RES_ATTRS));
+            final Map<String, String> resAttrs = parseOtelResourceAttributes(resStr);
+            resAttrs.putIfAbsent("service.name", serviceName);
+
+            LogSinkConfig.Builder b = LogSinkConfig.builder()
+                    .setOtlpEndpoint(endpoint)
+                    .setAppName(serviceName)
+                    .setQueueSize(queueSize)
+                    .setMaxBatchSize(maxBatchSize)
+                    .addResourceAttributes(resAttrs);
+
+            this.sink = new LogSink(b.build());
+
+            if (!bridgesInstalled) {
+                installBridgesOnce();
+                bridgesInstalled = true;
+            }
+            return sink;
+        }
     }
 
     private void installBridgesOnce() {
@@ -214,6 +233,14 @@ public final class LogSinkAppender extends AbstractAppender {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            String t = trim(v);
+            if (t != null) return t;
+        }
+        return null;
     }
 
     private static String orDefault(String s, String def) {
