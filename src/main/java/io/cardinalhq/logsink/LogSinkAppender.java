@@ -141,7 +141,8 @@ public final class LogSinkAppender extends AbstractAppender {
     /**
      * Creates the sink on the first event for which an endpoint can be resolved.
      * Config is resolved once, preferring event context (ContextDataProvider/MDC)
-     * and falling back to system properties and environment variables, so a broken
+     * and falling back to system properties (both the dotted-lowercase OTel names
+     * and the env-style uppercase names) and environment variables, so a broken
      * or non-propagating MDC cannot disable the appender.
      */
     private LogSink initSink(LogEvent event) {
@@ -149,20 +150,12 @@ public final class LogSinkAppender extends AbstractAppender {
             if (sink != null) return sink;
 
             ReadOnlyStringMap ctx = event.getContextData();
-            final String endpoint = firstNonBlank(
-                    getCtx(ctx, CTX_ENDPOINT),
-                    System.getProperty("otel.exporter.otlp.endpoint"),
-                    System.getenv(CTX_ENDPOINT));
+            final String endpoint = resolveConfig(ctx, CTX_ENDPOINT, "otel.exporter.otlp.endpoint");
             if (endpoint == null) return null;
 
-            final String serviceName = orDefault(firstNonBlank(
-                    getCtx(ctx, CTX_SERVICE),
-                    System.getProperty("otel.service.name"),
-                    System.getenv(CTX_SERVICE)), "unknown_service:log4j2");
-            final String resStr = firstNonBlank(
-                    getCtx(ctx, CTX_RES_ATTRS),
-                    System.getProperty("otel.resource.attributes"),
-                    System.getenv(CTX_RES_ATTRS));
+            final String serviceName = orDefault(
+                    resolveConfig(ctx, CTX_SERVICE, "otel.service.name"), "unknown_service:log4j2");
+            final String resStr = resolveConfig(ctx, CTX_RES_ATTRS, "otel.resource.attributes");
             final Map<String, String> resAttrs = parseOtelResourceAttributes(resStr);
             resAttrs.putIfAbsent("service.name", serviceName);
 
@@ -208,6 +201,20 @@ public final class LogSinkAppender extends AbstractAppender {
     }
 
     // ---------- helpers ----------
+
+    /**
+     * Resolves one config value. Precedence: event context (ContextDataProvider/MDC),
+     * then the canonical OTel system property (dotted lowercase), then the env-style
+     * name as a system property (integrators that bridge secrets/config into sysprops
+     * commonly reuse the env-var names), then the environment variable itself.
+     */
+    private static String resolveConfig(ReadOnlyStringMap ctx, String envStyleKey, String syspropKey) {
+        return firstNonBlank(
+                getCtx(ctx, envStyleKey),
+                System.getProperty(syspropKey),
+                System.getProperty(envStyleKey),
+                System.getenv(envStyleKey));
+    }
 
     private static String getCtx(ReadOnlyStringMap ctx, String key) {
         if (ctx == null || key == null) return null;
