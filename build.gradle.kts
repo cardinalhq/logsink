@@ -20,6 +20,8 @@ configurations.all {
 
 dependencies {
     val log4j = "2.25.1"
+    val openTelemetry = "1.64.0"
+
     compileOnly(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
     annotationProcessor(platform("org.apache.logging.log4j:log4j-bom:$log4j"))
 
@@ -30,9 +32,19 @@ dependencies {
     // If you still use SLF4J in non-appender classes, keep it compileOnly
     compileOnly("org.slf4j:slf4j-api:2.0.13")
 
+    api(platform("io.opentelemetry:opentelemetry-bom:$openTelemetry"))
+    api("io.opentelemetry:opentelemetry-api")
+    implementation("io.opentelemetry:opentelemetry-sdk")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp") {
+        exclude(group = "io.opentelemetry", module = "opentelemetry-exporter-sender-okhttp")
+    }
+    implementation("io.opentelemetry:opentelemetry-exporter-sender-jdk")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.2-alpha")
 
     implementation("com.lmax:disruptor:4.0.0")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 }
 
 java {
@@ -45,6 +57,7 @@ java {
 tasks.shadowJar {
     archiveClassifier.set("")
     relocate("com.lmax.disruptor", "io.cardinalhq.logsink.shaded.disruptor")
+    mergeServiceFiles()
 }
 
 tasks.named<Jar>("jar") {

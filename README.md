@@ -8,6 +8,11 @@
 
 logsink provides a structured way to export logs in the OpenTelemetry Protocol (OTLP) format. It converts raw `LogRecord` entries into `ExportLogsServiceRequest` payloads and sends them over HTTP with gzip compression. It handles batching by count and payload size, and supports periodic background flushing to avoid partial batch loss.
 
+It also provides a standard OpenTelemetry `TracerProvider` that batches and
+exports application spans over OTLP/HTTP. Callers can inject that provider (or
+a `Tracer`) normally, and code that cannot use injection can obtain the same
+provider through `Tracing`.
+
 Logsink is suitable for use cases where you:
 - Want fine-grained control over how OTEL logs are exported
 - Need to add metadata like `service.name`, `env`, `region` at the resource level
@@ -107,3 +112,96 @@ LogRecord record = LogRecord.newBuilder()
         .build())
     .build();
 ```
+
+## Traces and spans
+
+The trace endpoint is derived from the configured log endpoint (`/v1/logs`
+becomes `/v1/traces`). Use `setTracesEndpoint(...)` when your collector uses a
+different route.
+
+Initialize tracing once at application startup and close it at shutdown:
+
+```java
+LogSinkConfig config = LogSinkConfig.builder()
+    .setOtlpEndpoint("http://localhost:4318/v1/logs")
+    .setApiKey(System.getenv("CARDINAL_API_KEY"))
+    .setAppName("checkout-service")
+    .addResourceAttribute("deployment.environment", "production")
+    .build();
+
+TraceSink traceSink = Tracing.initialize(config);
+Runtime.getRuntime().addShutdownHook(new Thread(Tracing::shutdown));
+```
+
+Code can ask for the installed tracer from anywhere. OpenTelemetry context
+automatically makes a span created inside the scope a child of `requestSpan`:
+
+```java
+Tracer tracer = Tracing.getTracer(OrderService.class);
+Span requestSpan = tracer.spanBuilder("orders.create").startSpan();
+try (Scope ignored = requestSpan.makeCurrent()) {
+    requestSpan.setAttribute("order.id", orderId);
+    createOrder(orderId);
+} catch (Throwable error) {
+    requestSpan.recordException(error);
+    requestSpan.setStatus(StatusCode.ERROR);
+    throw error;
+} finally {
+    requestSpan.end();
+}
+```
+
+### Adding attributes (tags) to a span
+
+OpenTelemetry calls span tags **attributes**. Attributes can be supplied when
+the span is created or added while the span is active. They must be set before
+`end()` is called:
+
+```java
+Span span = tracer.spanBuilder("payment.authorize")
+    .setAttribute("payment.provider", "stripe")
+    .setAttribute("payment.amount", 42.50)
+    .setAttribute("payment.test", false)
+    .startSpan();
+
+try (Scope ignored = span.makeCurrent()) {
+    span.setAttribute("payment.id", paymentId);
+    authorizePayment(paymentId);
+} catch (RuntimeException error) {
+    span.recordException(error);
+    span.setStatus(StatusCode.ERROR);
+    throw error;
+} finally {
+    span.end();
+}
+```
+
+Use span events for timestamped occurrences within a span:
+
+```java
+span.addEvent(
+    "payment.authorized",
+    Attributes.of(
+        AttributeKey.stringKey("payment.provider"), "stripe",
+        AttributeKey.stringKey("payment.id"), paymentId
+    )
+);
+```
+
+For dependency injection, inject the standard OpenTelemetry type. `TraceSink`
+implements `TracerProvider`, so no logsink-specific type has to spread through
+application code:
+
+```java
+final class OrderService {
+    private final Tracer tracer;
+
+    OrderService(TracerProvider tracerProvider) {
+        this.tracer = tracerProvider.get(OrderService.class.getName());
+    }
+}
+```
+
+If an OpenTelemetry Java agent or another SDK is already registered globally,
+`Tracing.getTracer(...)` uses it automatically until a provider is explicitly
+installed or initialized through logsink.
