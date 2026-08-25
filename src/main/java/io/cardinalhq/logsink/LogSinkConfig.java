@@ -8,6 +8,7 @@ import java.util.*;
 
 public class LogSinkConfig {
     private final String otlpEndpoint;
+    private final String tracesEndpoint;
     private final String apiKey;
     private final int maxBatchSize;
     private final Resource resource;
@@ -15,6 +16,9 @@ public class LogSinkConfig {
 
     private LogSinkConfig(Builder builder) {
         this.otlpEndpoint = builder.otlpEndpoint;
+        this.tracesEndpoint = builder.tracesEndpoint == null
+                ? deriveTracesEndpoint(builder.otlpEndpoint)
+                : builder.tracesEndpoint;
         this.apiKey = builder.apiKey;
         this.maxBatchSize = builder.maxBatchSize;
         this.resource = builder.resource;
@@ -23,6 +27,14 @@ public class LogSinkConfig {
 
     public String getOTLPEndpoint() {
         return otlpEndpoint;
+    }
+
+    /**
+     * Returns the OTLP/HTTP traces endpoint. By default it is derived from the log
+     * endpoint (for example, {@code /v1/logs} becomes {@code /v1/traces}).
+     */
+    public String getTracesEndpoint() {
+        return tracesEndpoint;
     }
 
     public String getApiKey() {
@@ -47,6 +59,7 @@ public class LogSinkConfig {
 
     public static class Builder {
         private String otlpEndpoint;
+        private String tracesEndpoint;
         private String apiKey = "";
         private int maxBatchSize = 100; // default
         private String appName;
@@ -62,6 +75,12 @@ public class LogSinkConfig {
 
         public Builder setOtlpEndpoint(String otlpEndpoint) {
             this.otlpEndpoint = otlpEndpoint;
+            return this;
+        }
+
+        /** Sets a traces endpoint when it cannot be derived from the log endpoint. */
+        public Builder setTracesEndpoint(String tracesEndpoint) {
+            this.tracesEndpoint = tracesEndpoint;
             return this;
         }
 
@@ -94,6 +113,9 @@ public class LogSinkConfig {
             if (otlpEndpoint == null || otlpEndpoint.isEmpty()) {
                 throw new IllegalArgumentException("OTLP endpoint must be provided.");
             }
+            if (tracesEndpoint != null && tracesEndpoint.isBlank()) {
+                throw new IllegalArgumentException("Traces endpoint must not be blank.");
+            }
             if (appName == null || appName.isEmpty()) {
                 throw new IllegalArgumentException("App name must be provided.");
             }
@@ -116,5 +138,15 @@ public class LogSinkConfig {
 
             return new LogSinkConfig(this);
         }
+    }
+
+    private static String deriveTracesEndpoint(String endpoint) {
+        if (endpoint.endsWith("/v1/logs")) {
+            return endpoint.substring(0, endpoint.length() - "/v1/logs".length()) + "/v1/traces";
+        }
+        if (endpoint.endsWith("/v1/traces")) {
+            return endpoint;
+        }
+        return endpoint.endsWith("/") ? endpoint + "v1/traces" : endpoint + "/v1/traces";
     }
 }
