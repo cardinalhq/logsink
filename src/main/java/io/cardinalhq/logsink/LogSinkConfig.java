@@ -5,8 +5,16 @@ import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 
 import java.util.*;
+import java.util.function.Function;
 
 public class LogSinkConfig {
+    private static final String OTEL_ENDPOINT = "OTEL_EXPORTER_OTLP_ENDPOINT";
+    private static final String OTEL_LOGS_ENDPOINT = "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT";
+    private static final String OTEL_TRACES_ENDPOINT = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
+    private static final String OTEL_ENDPOINT_PROPERTY = "otel.exporter.otlp.endpoint";
+    private static final String OTEL_LOGS_ENDPOINT_PROPERTY = "otel.exporter.otlp.logs.endpoint";
+    private static final String OTEL_TRACES_ENDPOINT_PROPERTY = "otel.exporter.otlp.traces.endpoint";
+
     private final String otlpEndpoint;
     private final String tracesEndpoint;
     private final String apiKey;
@@ -14,11 +22,9 @@ public class LogSinkConfig {
     private final Resource resource;
     private final int queueSize; // default
 
-    private LogSinkConfig(Builder builder) {
-        this.otlpEndpoint = builder.otlpEndpoint;
-        this.tracesEndpoint = builder.tracesEndpoint == null
-                ? deriveTracesEndpoint(builder.otlpEndpoint)
-                : builder.tracesEndpoint;
+    private LogSinkConfig(Builder builder, ResolvedEndpoints endpoints) {
+        this.otlpEndpoint = endpoints.logs;
+        this.tracesEndpoint = endpoints.traces;
         this.apiKey = builder.apiKey;
         this.maxBatchSize = builder.maxBatchSize;
         this.resource = builder.resource;
@@ -110,8 +116,8 @@ public class LogSinkConfig {
         }
 
         public LogSinkConfig build() {
-            if (otlpEndpoint == null || otlpEndpoint.isEmpty()) {
-                throw new IllegalArgumentException("OTLP endpoint must be provided.");
+            if (otlpEndpoint != null && otlpEndpoint.isBlank()) {
+                throw new IllegalArgumentException("OTLP endpoint must not be blank.");
             }
             if (tracesEndpoint != null && tracesEndpoint.isBlank()) {
                 throw new IllegalArgumentException("Traces endpoint must not be blank.");
@@ -136,17 +142,81 @@ public class LogSinkConfig {
                     .addAllAttributes(attributes)
                     .build();
 
-            return new LogSinkConfig(this);
+            ResolvedEndpoints endpoints = resolveEndpoints(
+                    otlpEndpoint,
+                    tracesEndpoint,
+                    System::getProperty,
+                    System::getenv);
+            return new LogSinkConfig(this, endpoints);
         }
     }
 
-    private static String deriveTracesEndpoint(String endpoint) {
-        if (endpoint.endsWith("/v1/logs")) {
-            return endpoint.substring(0, endpoint.length() - "/v1/logs".length()) + "/v1/traces";
+    static ResolvedEndpoints resolveEndpoints(
+            String configuredLogs,
+            String configuredTraces,
+            Function<String, String> property,
+            Function<String, String> environment) {
+        String generic = firstNonBlank(
+                property.apply(OTEL_ENDPOINT_PROPERTY),
+                property.apply(OTEL_ENDPOINT),
+                environment.apply(OTEL_ENDPOINT));
+
+        String logs = firstNonBlank(
+                configuredLogs,
+                property.apply(OTEL_LOGS_ENDPOINT_PROPERTY),
+                property.apply(OTEL_LOGS_ENDPOINT),
+                environment.apply(OTEL_LOGS_ENDPOINT));
+        if (logs == null && generic != null) {
+            logs = signalEndpoint(generic, "logs");
         }
-        if (endpoint.endsWith("/v1/traces")) {
-            return endpoint;
+        if (logs == null) {
+            throw new IllegalArgumentException(
+                    "OTLP endpoint must be provided with setOtlpEndpoint(), "
+                            + OTEL_LOGS_ENDPOINT + ", or " + OTEL_ENDPOINT + ".");
         }
-        return endpoint.endsWith("/") ? endpoint + "v1/traces" : endpoint + "/v1/traces";
+
+        String traces = firstNonBlank(
+                configuredTraces,
+                property.apply(OTEL_TRACES_ENDPOINT_PROPERTY),
+                property.apply(OTEL_TRACES_ENDPOINT),
+                environment.apply(OTEL_TRACES_ENDPOINT));
+        if (traces == null) {
+            traces = configuredLogs != null || generic == null
+                    ? signalEndpoint(logs, "traces")
+                    : signalEndpoint(generic, "traces");
+        }
+
+        return new ResolvedEndpoints(logs, traces);
+    }
+
+    private static String signalEndpoint(String endpoint, String signal) {
+        String normalized = endpoint.endsWith("/")
+                ? endpoint.substring(0, endpoint.length() - 1)
+                : endpoint;
+        if (normalized.endsWith("/v1/logs")) {
+            normalized = normalized.substring(0, normalized.length() - "/v1/logs".length());
+        } else if (normalized.endsWith("/v1/traces")) {
+            normalized = normalized.substring(0, normalized.length() - "/v1/traces".length());
+        }
+        return normalized + "/v1/" + signal;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    static final class ResolvedEndpoints {
+        final String logs;
+        final String traces;
+
+        private ResolvedEndpoints(String logs, String traces) {
+            this.logs = logs;
+            this.traces = traces;
+        }
     }
 }

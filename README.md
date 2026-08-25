@@ -115,15 +115,25 @@ LogRecord record = LogRecord.newBuilder()
 
 ## Traces and spans
 
-The trace endpoint is derived from the configured log endpoint (`/v1/logs`
-becomes `/v1/traces`). Use `setTracesEndpoint(...)` when your collector uses a
-different route.
+An explicit builder endpoint takes precedence for that signal. If
+`setOtlpEndpoint(...)` is omitted, logsink reads the standard OpenTelemetry
+endpoint configuration in this order:
+
+1. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` for logs and
+   `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` for traces.
+2. `OTEL_EXPORTER_OTLP_ENDPOINT` as the common collector base URL.
+
+The corresponding Java system properties (`otel.exporter.otlp.logs.endpoint`,
+`otel.exporter.otlp.traces.endpoint`, and `otel.exporter.otlp.endpoint`) are
+also supported and take precedence over environment variables. Signal-specific
+endpoints are used as-is; the common endpoint automatically gets `/v1/logs` or
+`/v1/traces` appended. Use `setTracesEndpoint(...)` for an explicit custom
+trace route.
 
 Initialize tracing once at application startup and close it at shutdown:
 
 ```java
 LogSinkConfig config = LogSinkConfig.builder()
-    .setOtlpEndpoint("http://localhost:4318/v1/logs")
     .setApiKey(System.getenv("CARDINAL_API_KEY"))
     .setAppName("checkout-service")
     .addResourceAttribute("deployment.environment", "production")
